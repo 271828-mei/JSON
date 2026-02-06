@@ -161,22 +161,40 @@ typedef struct {
 /* size_t比int有效范围更大且无符号完全适配“字节偏移”的使用场景 */
 } error;
 /* 可以直接使用error代指结构体，不用/不能写成struct error，更加方便 */
-static error global_error = { NULL, 0 };
+static error global_error = { NULL, 0 };  
+/* static限定变量的作用域仅在当前源文件（.c）内可见，其他源文件无法通过extern访问 */
 
 CJSON_PUBLIC(const char *) cJSON_GetErrorPtr(void)
 {
-    return (const char*) (global_error.json + global_error.position);
+    return (const char*) (global_error.json + global_error.position);  //得到错误位置的字节地址
 }
+/* CJSON_PUBLIC是cJSON库定义的宏，作用是声明函数为公开接口（对外可见）*/
 
-CJSON_PUBLIC(char *) cJSON_GetStringValue(const cJSON * const item)
+CJSON_PUBLIC(char *) cJSON_GetStringValue(const cJSON * const item)  //获取cJSON节点的字符串值
+/*  第一个const：const cJSON *指针指向的cJSON节点内容不可修改（保证函数只读，不篡改节点）
+第二个const：* const item指针本身不可修改（函数内不能把item指向其他地址）*/
 {
-    if (!cJSON_IsString(item))
+    if (!cJSON_IsString(item))  //判断是否是字符串
     {
         return NULL;
     }
 
-    return item->valuestring;
+    return item->valuestring;  //valuestring存储了实际的字符串值
 }
+/* cJSON是cJSON.h的103行定义的结构体（链表）*/
+/*
+typedef struct cJSON
+{
+    struct cJSON *next;
+    struct cJSON *prev;
+    struct cJSON *child;
+    int type;
+    char *valuestring;
+    int valueint;
+    double valuedouble;
+    char *string;
+} cJSON;
+*/
 
 CJSON_PUBLIC(double) cJSON_GetNumberValue(const cJSON * const item)
 {
@@ -189,15 +207,19 @@ CJSON_PUBLIC(double) cJSON_GetNumberValue(const cJSON * const item)
 }
 
 /* This is a safeguard to prevent copy-pasters from using incompatible C and header files */
-#if (CJSON_VERSION_MAJOR != 1) || (CJSON_VERSION_MINOR != 7) || (CJSON_VERSION_PATCH != 19)
+/* 这是一个防护措施，用于防止复制粘贴代码的人使用不兼容的 C 源文件和头文件 */
+#if (CJSON_VERSION_MAJOR != 1) || (CJSON_VERSION_MINOR != 7) || (CJSON_VERSION_PATCH != 19)  
+//检查当前引入的 cJSON.h 头文件中定义的版本号（主版本 1、次版本 7、补丁版本 19）是否和 cJSON.c 源文件要求的版本号完全一致
     #error cJSON.h and cJSON.c have different versions. Make sure that both have the same.
+//编译器遇到该指令会直接停止编译，并输出#error后面的提示信息
 #endif
 
 CJSON_PUBLIC(const char*) cJSON_Version(void)
 {
-    static char version[15];
-    sprintf(version, "%i.%i.%i", CJSON_VERSION_MAJOR, CJSON_VERSION_MINOR, CJSON_VERSION_PATCH);
-
+    static char version[15];  //static确保不会出现返回栈指针导致的野指针问题
+    sprintf(version, "%i.%i.%i", CJSON_VERSION_MAJOR, CJSON_VERSION_MINOR, CJSON_VERSION_PATCH);  //%i可以替换为%d
+/*  把CJSON_VERSION_MAJOR（1）CJSON_VERSION_MINOR（7）CJSON_VERSION_PATCH（19）按%i.%i.%i格式写入version数组
+最终version数组内容为"1.7.19"，自动加字符串结束符\0 */
     return version;
 }
 
