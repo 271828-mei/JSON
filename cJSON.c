@@ -19,38 +19,52 @@
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
   THE SOFTWARE.
 */
-/*��������ע�͵ķ���*/
+/*这是上述注释的翻译*/
 /*
-  ��Ȩ���� (c) 2009-2017 Dave Gamble �� cJSON ������
+  版权所有 (c) 2009-2017 Dave Gamble 及 cJSON 贡献者
 
-  �ش������κλ�ñ�����������ĵ��ļ����³ơ�����������������Ա���ʹ�����ɣ�
-  �������Ƶش�����������������������ʹ�á����ơ��޸ġ��ϲ����������ַ���
-  �����ɺ�/����۱�����������Ȩ���������������ṩ����������Ա����������Ϊ��
-  �����������������
+  特此授予任何获得本软件及相关文档文件（下称“软件”）副本的人员免费使用许可，
+  不受限制地处理本软件，包括但不限于使用、复制、修改、合并、发布、分发、
+  再许可和/或出售本软件副本的权利，并允许向其提供本软件的人员做出上述行为，
+  但须符合以下条件：
 
-  ������Ȩ�����ͱ���������Ӧ�����ڱ����������и�����ʵ�ʲ����С�
+  上述版权声明和本许可声明应包含在本软件的所有副本或实质部分中。
 
-  ����������ԭ�����ṩ���������κ���ʾ��ʾ�ĵ����������������ڶ������ԡ�
-  �ض���;�����Ժͷ���Ȩ�Եĵ��������κ�����£����߻��Ȩ�����˾�����
-  ��ʹ�û�������ʽ�������������������κ����⡢���⳥���������γе����Σ�
-  ���۸����������ͬ����Ȩ��������Ϊ�����������е����Ρ�
+  本软件按“原样”提供，不附带任何明示或暗示的担保，包括但不限于对适销性、
+  特定用途适用性和非侵权性的担保。在任何情况下，作者或版权持有人均不对
+  因使用或其他方式处理本软件而引发的任何索赔、损害赔偿或其他责任承担责任，
+  无论该责任是因合同、侵权或其他行为产生，均不承担责任。
 */
 
 /* cJSON */
 /* JSON parser in C. */
 
 /* disable warnings about old C89 functions in MSVC */
+/* 接下来的代码/配置会关闭MSVC编译器中，针对C89旧版函数的警告提示 */
 #if !defined(_CRT_SECURE_NO_DEPRECATE) && defined(_MSC_VER)
 #define _CRT_SECURE_NO_DEPRECATE
 #endif
+/* _CRT_SECURE_NO_DEPRECATE这是MSVC的官方宏，定义它后，编译器会直接关闭C运行时库中旧函数的弃用警告
+_MSC_VER是MSVC编译器的专属预定义宏，只要用VS/MSVC编译，这个宏会被编译器自动定义
+以上代码的目的是如果操作者使用VS/MSVC编译就保证定义_CRT_SECURE_NO_DEPRECATE（不管开始时是否定义）
+以此确保关闭MSVC编译器中，针对C89旧版函数的警告提示，#endif表示#if的结束 */
 
 #ifdef __GNUC__
 #pragma GCC visibility push(default)
 #endif
+/* __GNUC__是GCC系专属预定义宏
+这段代码的目的是临时（修改前，把当前的符号可见性配置压入GCC的可见性栈中暂存支持后续恢复）
+将后续代码的符号可见性设置为全局可见
+GCC在部分编译选项下，会将符号默认设为隐藏可见
+写这段代码能避免跨编译器（GCC，MSVC）时外部模块找不到符号的问题 */
+
 #if defined(_MSC_VER)
 #pragma warning (push)
+/* 将当前的所有警告配置保存到栈（暂存）*/
 /* disable warning about single line comments in system headers */
+/* 接下来要关闭的是-系统头文件中使用单行注释-触发的警告 */
 #pragma warning (disable : 4001)
+/* 单独禁用4001号警告 */
 #endif
 
 #include <string.h>
@@ -58,8 +72,11 @@
 #include <math.h>
 #include <stdlib.h>
 #include <limits.h>
+/* 定义了整型、字符型等整数类型的数值极限宏，比如某个类型的最大值、最小值、二进制位数等，解决不知道不同平台下整数类型占多少字节、取值范围是多少的跨平台问题 */
 #include <ctype.h>
+/* 提供了字符分类、字符大小写转换的库函数 */
 #include <float.h>
+/* 专门定义了浮点型的数值极限宏，比如浮点型的精度、最大值、最小值、尾数位数等，解决跨平台下浮点型取值范围和精度不一致的问题 */
 
 #ifdef ENABLE_LOCALES
 #include <locale.h>
@@ -68,9 +85,11 @@
 #if defined(_MSC_VER)
 #pragma warning (pop)
 #endif
+
 #ifdef __GNUC__
 #pragma GCC visibility pop
 #endif
+/*恢复前面push(default)造成的修改*/
 
 #include "cJSON.h"
 
