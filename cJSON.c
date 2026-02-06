@@ -21,7 +21,7 @@
 */
 /*这是上述注释的翻译*/
 /*
-  版权所有 (c) 2009-2017 Dave Gamble 及 cJSON 贡献者
+  版权所有(c)2009-2017 Dave Gamble及cJSON 贡献者
 
   特此授予任何获得本软件及相关文档文件（下称“软件”）副本的人员免费使用许可，
   不受限制地处理本软件，包括但不限于使用、复制、修改、合并、发布、分发、
@@ -112,6 +112,8 @@ GCC在部分编译选项下，会将符号默认设为隐藏可见
 #endif
 /* 取消true的定义 */
 #define true ((cJSON_bool)1)
+/* cJSON_bool最初出现在cJSON.h的132行typedef int cJSON_bool;
+这里先将1强制转化为cJSON_bool（int）类型，再将true定义为1*/
 
 #ifdef false
 #undef false
@@ -119,25 +121,46 @@ GCC在部分编译选项下，会将符号默认设为隐藏可见
 #define false ((cJSON_bool)0)
 
 /* define isnan and isinf for ANSI C, if in C99 or above, isnan and isinf has been defined in math.h */
+/* 为ANSI C（C89 标准）定义isnan和isinf函数，如果是C99或更高版本，isnan和isinf已经在math.h头文件中定义了 */
 #ifndef isinf
 #define isinf(d) (isnan((d - d)) && !isnan(d))
+/* isnan((d - d))：剩余NaN和无穷大
+!isnan(d)；去除NaN*/
 #endif
+/* isinf是专门用来判断一个浮点数是否为无穷大（Infinity）的宏函数 */
+  
 #ifndef isnan
 #define isnan(d) (d != d)
+/* 加外层括号确保运算时（出现三元运算符？或逗号运算符,）优先级正确 */
 #endif
-
+/* 利用 NaN不等于自身的特性，实现的极简版NaN判断宏
+NaN是遵循IEEE 754浮点数标准中定义的一个特殊浮点数值，用来表示无效或未定义的浮点数运算结果
+以下情况均出现NaN:
+0 除以 0
+无穷大减无穷大
+负数开平方
+对数的负数参数
+无意义的数值转换：如把非数字字符串转浮点数 */
+  
 #ifndef NAN
 #ifdef _WIN32
+/* 判断是否在Windows平台下编译 */
 #define NAN sqrt(-1.0)
+/* 早期Windows编译器对0.0/0.0的处理不规范可能返回0而非NaN，导致定义失效
+而sqrt(-1.0)在Windows下的数学库中，会稳定返回NaN兼容性更好 */
 #else
 #define NAN 0.0/0.0
+/* 非Windows系统（Linux/macOS）0.0/0.0是生成NaN的通用方式，所有编译器都支持 */
 #endif
 #endif
 
 typedef struct {
-    const unsigned char *json;
-    size_t position;
+    const unsigned char *json;  //指向待解析的 JSON 原始数据的起始地址
+/* unsigned char能正确表示0~255的所有字节值，避免char因“有符号”导致的-128~127范围溢出问题）*/
+    size_t position;  //记录解析器处理到JSON数据的字节偏移量，从JSON指针指向的起始位置开始计数
+/* size_t比int有效范围更大且无符号完全适配“字节偏移”的使用场景 */
 } error;
+/* 可以直接使用error代指结构体，不用/不能写成struct error，更加方便 */
 static error global_error = { NULL, 0 };
 
 CJSON_PUBLIC(const char *) cJSON_GetErrorPtr(void)
