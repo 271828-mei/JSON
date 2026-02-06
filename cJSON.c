@@ -64,7 +64,7 @@ GCC在部分编译选项下，会将符号默认设为隐藏可见
 /* disable warning about single line comments in system headers */
 /* 接下来要关闭的是-系统头文件中使用单行注释-触发的警告 */
 #pragma warning (disable : 4001)
-/* 单独禁用4001号警告 */
+/* 单独禁用4001号警告直到#pragma warning (pop) */
 #endif
 
 #include <string.h>
@@ -79,24 +79,38 @@ GCC在部分编译选项下，会将符号默认设为隐藏可见
 /* 专门定义了浮点型的数值极限宏，比如浮点型的精度、最大值、最小值、尾数位数等，解决跨平台下浮点型取值范围和精度不一致的问题 */
 
 #ifdef ENABLE_LOCALES
+/* #ifdef是#if defined(...)的简写 */
 #include <locale.h>
+/* 提供程序的本地化控制函数和宏，解决程序在不同国家/地区、不同语言、不同编码下的显示/处理差异问题 */
 #endif
+/* 宏ENABLE_LOCALES是功能编译开关
+编译时若定义该宏，就开启本地化功能；不定义则关闭
+程序会使用 C 语言默认的"C"本地化规则
+满足不同项目的需求（若项目不需要本地化功能
+引入<locale.h>会让编译器额外处理该头文件的宏/函数声明，虽开销极小
+但工业级代码会追求零无用编译，按需引入能让编译更高效）*/
 
 #if defined(_MSC_VER)
 #pragma warning (pop)
+/* 恢复前面#pragma warning (push)造成的修改
+及恢复4001号警告*/
 #endif
 
 #ifdef __GNUC__
 #pragma GCC visibility pop
 #endif
-/*恢复前面push(default)造成的修改*/
+/*恢复前面push(default)造成的修改
+及结束代码符号的全局可见*/
 
 #include "cJSON.h"
+/* cJSON项目中特有的头文件 */
 
 /* define our own boolean type */
+/* 接下来要自定义我们自己的布尔类型 */
 #ifdef true
 #undef true
 #endif
+/* 取消true的定义 */
 #define true ((cJSON_bool)1)
 
 #ifdef false
