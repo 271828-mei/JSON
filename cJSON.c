@@ -224,38 +224,46 @@ CJSON_PUBLIC(const char*) cJSON_Version(void)
 }
 
 /* Case insensitive string comparison, doesn't consider two NULL pointers equal though */
+/* 不区分大小写的字符串比较（函数），但不会将两个 NULL 指针视为相等 */
 static int case_insensitive_strcmp(const unsigned char *string1, const unsigned char *string2)
 {
     if ((string1 == NULL) || (string2 == NULL))
     {
         return 1;
     }
-
+//不将两个 NULL 指针视为相等
     if (string1 == string2)
     {
         return 0;
     }
-
-    for(; tolower(*string1) == tolower(*string2); (void)string1++, string2++)
+//两个字符串相等直接返回
+    for(; tolower(*string1) == tolower(*string2); (void)string1++, string2++)  //tolower()若为大写字母将字符转为小写，其余情况不变
     {
         if (*string1 == '\0')
         {
             return 0;
-        }
+        }  //字符串1结束，说明两字符串长度相等且不区分大小写的其余字符相同
     }
 
-    return tolower(*string1) - tolower(*string2);
+    return tolower(*string1) - tolower(*string2);  //返回首个不区分大小写（将大写字母转化为小写字母）的不同字符的ASCII码的差值
 }
 
-typedef struct internal_hooks
+typedef struct internal_hooks  //封装一组指向内存分配/释放/重分配函数的指针，让用户可以自定义cJSON库的内存管理逻辑
 {
-    void *(CJSON_CDECL *allocate)(size_t size);
-    void (CJSON_CDECL *deallocate)(void *pointer);
-    void *(CJSON_CDECL *reallocate)(void *pointer, size_t size);
+    void *(CJSON_CDECL *allocate)(size_t size);  //这个函数指针的目标函数就是malloc的替代版
+    void (CJSON_CDECL *deallocate)(void *pointer);  //目标函数是free的替代版
+    void *(CJSON_CDECL *reallocate)(void *pointer, size_t size);  //目标函数是realloc的替代版
 } internal_hooks;
-
+/* 头文件cJSON第55行#define CJSON_CDECL __cdecl
+__cdecl规定：参数按从右到左的顺序压入栈中
+栈清理责任由调用者清理栈（调用函数的一方，在函数执行完后负责把栈恢复原状）*/
 #if defined(_MSC_VER)
 /* work around MSVC error C2322: '...' address of dllimport '...' is not static */
+/* 规避MSVC编译器的C2322错误：“dllimport符号的地址不是静态的”
+MSVC编译器对dllimport符号的地址有严格限制
+__declspec(dllimport) 修饰的符号是动态导入的，其地址在编译期无法确定
+因此编译器不允许将其地址赋值给要求静态地址的变量，否则抛出C2322错误*/
+
 static void * CJSON_CDECL internal_malloc(size_t size)
 {
     return malloc(size);
@@ -268,34 +276,36 @@ static void * CJSON_CDECL internal_realloc(void *pointer, size_t size)
 {
     return realloc(pointer, size);
 }
-#else
+/* 以上三个函数是cJSON库对系统原生malloc/free/realloc的本地静态包装函数 */
+#else  //当编译环境不是MSVC+动态库导出时，无需定义静态包装函数
 #define internal_malloc malloc
 #define internal_free free
 #define internal_realloc realloc
 #endif
 
 /* strlen of character literals resolved at compile time */
+/* 字符字面量的strlen（字符串长度）在编译期就被解析/计算完成 */
 #define static_strlen(string_literal) (sizeof(string_literal) - sizeof(""))
-
+//定义一个计算字符串字面量的宏
 static internal_hooks global_hooks = { internal_malloc, internal_free, internal_realloc };
 
-static unsigned char* cJSON_strdup(const unsigned char* string, const internal_hooks * const hooks)
+static unsigned char* cJSON_strdup(const unsigned char* string, const internal_hooks * const hooks)  //将一段字符串拷贝并返回拷贝内容首地址
 {
     size_t length = 0;
     unsigned char *copy = NULL;
 
-    if (string == NULL)
+    if (string == NULL)  //若源字符串不存在
     {
         return NULL;
     }
 
-    length = strlen((const char*)string) + sizeof("");
-    copy = (unsigned char*)hooks->allocate(length);
-    if (copy == NULL)
+    length = strlen((const char*)string) + sizeof("");  //计算包含结束符的长度
+    copy = (unsigned char*)hooks->allocate(length);  //分配内存
+    if (copy == NULL)  //若果分配内存失败
     {
         return NULL;
     }
-    memcpy(copy, string, length);
+    memcpy(copy, string, length);  //拷贝内容，包含结束符
 
     return copy;
 }
