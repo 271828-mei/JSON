@@ -631,7 +631,7 @@ CJSON_PUBLIC(char*) cJSON_SetValuestring(cJSON *object, const char *valuestring)
         strcpy(object->valuestring, valuestring);
         return object->valuestring;
     }
-    copy = (char*) cJSON_strdup((const unsigned char*)valuestring, &global_hooks);  
+    copy = (char*) cJSON_strdup((const unsigned char*)valuestring, &global_hooks);  //处理“目标字符串空间不足”的场景,分配内存
     if (copy == NULL)
     {
         return NULL;
