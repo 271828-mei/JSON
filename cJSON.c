@@ -299,7 +299,7 @@ static unsigned char* cJSON_strdup(const unsigned char* string, const internal_h
         return NULL;
     }
 
-    length = strlen((const char*)string) + sizeof("");  //计算包含结束符的长度
+    length = strlen((const char*)string) + sizeof("");//计算包含结束符的长度
     copy = (unsigned char*)hooks->allocate(length);  //分配内存
     if (copy == NULL)  //若果分配内存失败
     {
@@ -573,8 +573,10 @@ loop_end:
 }
 
 /* don't ask me, but the original cJSON_SetNumberValue returns an integer or double */
-CJSON_PUBLIC(double) cJSON_SetNumberHelper(cJSON *object, double number)
+/* 别问我为什么（设计这么奇怪），但原版的cJSON_SetNumberValue函数返回值既可能是整数（integer），也可能是浮点数（double）*/
+CJSON_PUBLIC(double) cJSON_SetNumberHelper(cJSON *object, double number)  //在int范围内为cJSON内的valueint赋值
 {
+    //代码不足：object指针可能为NULL，直接访问object->valueint会导致程序崩溃
     if (number >= INT_MAX)
     {
         object->valueint = INT_MAX;
@@ -592,17 +594,22 @@ CJSON_PUBLIC(double) cJSON_SetNumberHelper(cJSON *object, double number)
 }
 
 /* Note: when passing a NULL valuestring, cJSON_SetValuestring treats this as an error and return NULL */
+/* 注意：当向cJSON_SetValuestring函数传入NULL作为valuestring参数时，该函数会把这种情况判定为错误，并返回NULL */
 CJSON_PUBLIC(char*) cJSON_SetValuestring(cJSON *object, const char *valuestring)
 {
     char *copy = NULL;
     size_t v1_len;
     size_t v2_len;
     /* if object's type is not cJSON_String or is cJSON_IsReference, it should not set valuestring */
+    /* 如果cJSON节点（object）的类型不是字符串类型（cJSON_String）
+    或者该节点标记了‘引用模式’（cJSON_IsReference），那么就不应该给这个节点设置 valuestring（字符串值）*/
     if ((object == NULL) || !(object->type & cJSON_String) || (object->type & cJSON_IsReference))
+    //cJSON第94行#define cJSON_String(1 << 4)，cJSON_String是字符串类型标记
     {
         return NULL;
     }
     /* return NULL if the object is corrupted or valuestring is NULL */
+    /* 如果cJSON节点对象（object）已损坏，或者要设置的字符串值（valuestring）为NULL，那么该函数会返回NULL */
     if (object->valuestring == NULL || valuestring == NULL)
     {
         return NULL;
@@ -611,17 +618,20 @@ CJSON_PUBLIC(char*) cJSON_SetValuestring(cJSON *object, const char *valuestring)
     v1_len = strlen(valuestring);
     v2_len = strlen(object->valuestring);
 
-    if (v1_len <= v2_len)
+    if (v1_len <= v2_len)  //object->valuestring有足够空间可以容纳valuestring的内容
     {
         /* strcpy does not handle overlapping string: [X1, X2] [Y1, Y2] => X2 < Y1 or Y2 < X1 */
-        if (!( valuestring + v1_len < object->valuestring || object->valuestring + v2_len < valuestring ))
+        /* strcpy函数无法正确处理内存区域重叠的字符串拷贝
+        只有当源字符串区间[X1,X2]和目标字符串区间[Y1,Y2]完全不重叠
+        （要么 X2 < Y1，要么 Y2 < X1）时，strcpy才能正常工作 */
+        if (!( valuestring + v1_len < object->valuestring || object->valuestring + v2_len < valuestring ))  /* 对应X2 < Y1和Y2 < X1 */
         {
             return NULL;
         }
         strcpy(object->valuestring, valuestring);
         return object->valuestring;
     }
-    copy = (char*) cJSON_strdup((const unsigned char*)valuestring, &global_hooks);
+    copy = (char*) cJSON_strdup((const unsigned char*)valuestring, &global_hooks);  
     if (copy == NULL)
     {
         return NULL;
