@@ -310,11 +310,22 @@ static unsigned char* cJSON_strdup(const unsigned char* string, const internal_h
     return copy;
 }
 
-CJSON_PUBLIC(void) cJSON_InitHooks(cJSON_Hooks* hooks)
+CJSON_PUBLIC(void) cJSON_InitHooks(cJSON_Hooks* hooks)  //统一管理cJSON库的内存分配/释放钩子，让用户既能自定义内存管理逻辑，也能随时重置回系统默认行为
+/*
+cJSON_Hooks出现再cJSON.h头文件125行
+注释：Windows系统中，malloc/free函数始终使用CDECL调用约定，哪怕编译器的默认调用约定不是CDECL
+因此要确保（我们写的）钩子代码能直接传递（调用）这些函数（不会因为调用约定不匹配而出错）
+typedef struct cJSON_Hooks
+{
+      void *(CJSON_CDECL *malloc_fn)(size_t sz);  //可以指向malloc类型
+      void (CJSON_CDECL *free_fn)(void *ptr);  //可以指向free类型
+} cJSON_Hooks;
+*/
 {
     if (hooks == NULL)
     {
         /* Reset hooks */
+        /* 重置钩子 */
         global_hooks.allocate = malloc;
         global_hooks.deallocate = free;
         global_hooks.reallocate = realloc;
@@ -334,6 +345,7 @@ CJSON_PUBLIC(void) cJSON_InitHooks(cJSON_Hooks* hooks)
     }
 
     /* use realloc only if both free and malloc are used */
+    /* realloc仅在free和malloc同时使用时使用，保证realloc与malloc/free的逻辑兼容 */
     global_hooks.reallocate = NULL;
     if ((global_hooks.allocate == malloc) && (global_hooks.deallocate == free))
     {
@@ -342,34 +354,55 @@ CJSON_PUBLIC(void) cJSON_InitHooks(cJSON_Hooks* hooks)
 }
 
 /* Internal constructor. */
+/* 内部构造函数 */
 static cJSON *cJSON_New_Item(const internal_hooks * const hooks)
 {
-    cJSON* node = (cJSON*)hooks->allocate(sizeof(cJSON));
-    if (node)
+    cJSON* node = (cJSON*)hooks->allocate(sizeof(cJSON));  //分配内存，用于存储一个cJSON节点
+    if (node)  //如果分配成功
     {
-        memset(node, '\0', sizeof(cJSON));
+        memset(node, '\0', sizeof(cJSON));  //将分配的cJSON结构体内存全部初始化为\0
     }
 
     return node;
 }
+/* cJSON是cJSON.h的103行定义的结构体（链表）*/
+/*
+typedef struct cJSON
+{
+    struct cJSON *next;
+    struct cJSON *prev;
+    struct cJSON *child;
+    int type;
+    char *valuestring;
+    int valueint;
+    double valuedouble;
+    char *string;
+} cJSON;
+*/
 
 /* Delete a cJSON structure. */
+/* 删除一个 cJSON 结构体 */
 CJSON_PUBLIC(void) cJSON_Delete(cJSON *item)
 {
     cJSON *next = NULL;
-    while (item != NULL)
+    while (item != NULL)  //把当前节点所在的整条同级链表（从 item 开始往后）全部释放
     {
-        next = item->next;
+        next = item->next;  //保存下一个节点地址，依赖的指针只有next
         if (!(item->type & cJSON_IsReference) && (item->child != NULL))
+        /* cJSON.h的99行#define cJSON_IsReference 256
+        表示这个节点是“引用节点”即该节点只是指向其他节点的内存，自身并不持有内存
+        item->type不只是单纯表示JSON节点类型，它是一个整数类型的位掩码，“用二进制的不同位来存储多个标记”
+        item->type & cJSON_StringIsConst：检查item->type中是否包含cJSON_StringIsConst标记
+        如果节点不是引用节点才会释放内存*/
         {
             cJSON_Delete(item->child);
         }
-        if (!(item->type & cJSON_IsReference) && (item->valuestring != NULL))
+        if (!(item->type & cJSON_IsReference) && (item->valuestring != NULL))  //释放节点的数值字符串内存
         {
-            global_hooks.deallocate(item->valuestring);
-            item->valuestring = NULL;
+            global_hooks.deallocate(item->valuestring);  //这块内存是动态分配的，需要单独释放
+            item->valuestring = NULL;  //释放后置空，防止野指针
         }
-        if (!(item->type & cJSON_StringIsConst) && (item->string != NULL))
+        if (!(item->type & cJSON_StringIsConst) && (item->string != NULL))  //cJSON.h的100行#define cJSON_StringIsConst 512，同上
         {
             global_hooks.deallocate(item->string);
             item->string = NULL;
@@ -380,11 +413,12 @@ CJSON_PUBLIC(void) cJSON_Delete(cJSON *item)
 }
 
 /* get the decimal point character of the current locale */
+/* 获取当前系统区域设置（locale）下的小数点字符 */
 static unsigned char get_decimal_point(void)
 {
-#ifdef ENABLE_LOCALES
-    struct lconv *lconv = localeconv();
-    return (unsigned char) lconv->decimal_point[0];
+#ifdef ENABLE_LOCALES  //编译宏开关，开启时表示库支持“本地化”功能
+    struct lconv *lconv = localeconv();  //localeconv()是C标准库函数，用于获取当前系统的区域设置信息（返回struct lconv结构体指针）
+    return (unsigned char) lconv->decimal_point[0];  //decimal_point[]专门存储当前系统locale下，普通数字（非货币）的小数点分隔符
 #else
     return '.';
 #endif
@@ -396,11 +430,19 @@ typedef struct
     size_t length;
     size_t offset;
     size_t depth; /* How deeply nested (in arrays/objects) is the input at the current offset. */
+/* 输入内容在“当前偏移位置”处，嵌套在JSON数组/对象中的深度是多少
+校验括号是否成对、防止过度嵌套导致崩溃 */
     internal_hooks hooks;
-} parse_buffer;
+} parse_buffer;  //存储了待解析的JSON文本、总长度（上限）、当前解析位置、嵌套深度、内存钩子
 
 /* check if the given size is left to read in a given parse buffer (starting with 1) */
+/* 检查：给定的字节数（size）是否还能从指定的解析缓冲区（parse_buffer）中读取到（注：size的计数从1开始）*/
 #define can_read(buffer, size) ((buffer != NULL) && (((buffer)->offset + size) <= (buffer)->length))
+/*宏定义里不会写parse_buffer* buffer这种类型声明，只会用buffer作为占位符
+宏的使用者必须遵守“约定”：传入的buffer必须是指向parse_buffer结构体的指针*/
+/* (buffer)->offset：当前位置 
+(buffer)->offset + size:读取 size 个字节后会到达的位置
+这个目标位置不能超过文本总长度（length 是字节上限）*/
 /* check if the buffer can be accessed at the given index (starting with 0) */
 #define can_access_at_index(buffer, index) ((buffer != NULL) && (((buffer)->offset + index) < (buffer)->length))
 #define cannot_access_at_index(buffer, index) (!can_access_at_index(buffer, index))
