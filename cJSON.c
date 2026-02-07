@@ -426,40 +426,48 @@ static unsigned char get_decimal_point(void)
 
 typedef struct
 {
-    const unsigned char *content;
-    size_t length;
-    size_t offset;
+    const unsigned char *content;  //待解析的JSON文本
+    size_t length;  //总长度（上限）
+    size_t offset;  //当前解析位置
     size_t depth; /* How deeply nested (in arrays/objects) is the input at the current offset. */
 /* 输入内容在“当前偏移位置”处，嵌套在JSON数组/对象中的深度是多少
 校验括号是否成对、防止过度嵌套导致崩溃 */
     internal_hooks hooks;
-} parse_buffer;  //存储了待解析的JSON文本、总长度（上限）、当前解析位置、嵌套深度、内存钩子
+} parse_buffer;
 
 /* check if the given size is left to read in a given parse buffer (starting with 1) */
-/* 检查：给定的字节数（size）是否还能从指定的解析缓冲区（parse_buffer）中读取到（注：size的计数从1开始）*/
+/* 检查给定的字节数（size）是否还能从指定的解析缓冲区（parse_buffer）中读取到（注：size的计数从1开始）*/
 #define can_read(buffer, size) ((buffer != NULL) && (((buffer)->offset + size) <= (buffer)->length))
 /*宏定义里不会写parse_buffer* buffer这种类型声明，只会用buffer作为占位符
 宏的使用者必须遵守“约定”：传入的buffer必须是指向parse_buffer结构体的指针*/
-/* (buffer)->offset：当前位置 
-(buffer)->offset + size:读取 size 个字节后会到达的位置
+/* (buffer)->offset：当前位置
+(buffer)->offset + size:读取size个字节后会到达的位置
 这个目标位置不能超过文本总长度（length 是字节上限）*/
+
 /* check if the buffer can be accessed at the given index (starting with 0) */
+/* 检查指定的索引位置（从0开始计数）是否能安全访问该缓冲区的内容 */
 #define can_access_at_index(buffer, index) ((buffer != NULL) && (((buffer)->offset + index) < (buffer)->length))
+/* index：相对于基准位置的偏移量
+“从0开始计数”所以使用<而不是<=（为最后一位\0保留空间）*/
 #define cannot_access_at_index(buffer, index) (!can_access_at_index(buffer, index))
 /* get a pointer to the buffer at the position */
+/* 获取解析缓冲区中指定位置对应的内容指针 */
 #define buffer_at_offset(buffer) ((buffer)->content + (buffer)->offset)
+/* (buffer)->content：内存起始地址
+(buffer)->offset：从首地址开始的字节偏移量 */
 
 /* Parse the input text to generate a number, and populate the result into item. */
+/* 解析输入的文本内容以生成一个数字，并将解析结果填充到指定的item节点中 */
 static cJSON_bool parse_number(cJSON * const item, parse_buffer * const input_buffer)
 {
-    double number = 0;
+    double number = 0;  //与double number = 0.0;等价
     unsigned char *after_end = NULL;
-    unsigned char *number_c_string;
-    unsigned char decimal_point = get_decimal_point();
+    unsigned char *number_c_string;  //临时缓冲区
+    unsigned char decimal_point = get_decimal_point();  //获取当前系统区域设置下的小数点字符
     size_t i = 0;
     size_t number_string_length = 0;
-    cJSON_bool has_decimal_point = false;
-
+    cJSON_bool has_decimal_point = false;  //cJSON132行typedef int cJSON_bool;
+    /* has_decimal_point判断是否有小数点 */
     if ((input_buffer == NULL) || (input_buffer->content == NULL))
     {
         return false;
@@ -468,9 +476,11 @@ static cJSON_bool parse_number(cJSON * const item, parse_buffer * const input_bu
     /* copy the number into a temporary buffer and replace '.' with the decimal point
      * of the current locale (for strtod)
      * This also takes care of '\0' not necessarily being available for marking the end of the input */
-    for (i = 0; can_access_at_index(input_buffer, i); i++)
+    /* 把数字文本拷贝到临时缓冲区，将其中的'.'替换为当前系统locale的小数点字符（适配 strtod 函数）
+    同时处理输入文本末尾可能没有'\0'终止符的问题 */
+    for (i = 0; can_access_at_index(input_buffer, i); i++)  //can_access_at_index要求i从0开始
     {
-        switch (buffer_at_offset(input_buffer)[i])
+        switch (buffer_at_offset(input_buffer)[i])  //buffer_at_offset(input_buffer)[i]就是当前位置往后偏移i个字节的字符值，使用数组下标访问
         {
             case '0':
             case '1':
@@ -495,15 +505,17 @@ static cJSON_bool parse_number(cJSON * const item, parse_buffer * const input_bu
                 break;
 
             default:
-                goto loop_end;
+                goto loop_end;  //直接跳转到循环外的loop_end标记，终止整个for循环
+                //保证1到number_string_length个字符都是有效字符
         }
     }
 loop_end:
     /* malloc for temporary buffer, add 1 for '\0' */
+    /* 为临时缓冲区分配内存，额外多分配1个字节的空间，用于存储字符串终止符 '\0' */
     number_c_string = (unsigned char *) input_buffer->hooks.allocate(number_string_length + 1);
     if (number_c_string == NULL)
     {
-        return false; /* allocation failure */
+        return false; /* allocation failure */  //内存分配失败
     }
 
     memcpy(number_c_string, buffer_at_offset(input_buffer), number_string_length);
@@ -516,15 +528,17 @@ loop_end:
             if (number_c_string[i] == '.')
             {
                 /* replace '.' with the decimal point of the current locale (for strtod) */
+                /* 将'.'替换为当前系统locale的小数点字符（适配 strtod 函数）*/
                 number_c_string[i] = decimal_point;
             }
         }
     }
 
-    number = strtod((const char*)number_c_string, (char**)&after_end);
-    if (number_c_string == after_end)
+    number = strtod((const char*)number_c_string, (char**)&after_end);  //将临时缓冲区中的数字字符串转换为浮点数值，并校验转换是否成功
+    if (number_c_string == after_end)  //strtod有没有成功解析到至少一个有效数字
     {
         /* free the temporary buffer */
+        /* 释放临时缓冲区 */
         input_buffer->hooks.deallocate(number_c_string);
         return false; /* parse_error */
     }
@@ -532,11 +546,15 @@ loop_end:
     item->valuedouble = number;
 
     /* use saturation in case of overflow */
-    if (number >= INT_MAX)
+    if (number >= INT_MAX)  //INT_MAX是正整数常量，隐式转换为double时不会丢失精度、也不会出现符号错误
     {
-        item->valueint = INT_MAX;
+        item->valueint = INT_MAX;  //确保valueint不超过int最大值
     }
     else if (number <= (double)INT_MIN)
+    /* INT_MIN在内存中是“有符号整数的最小值”，但C语言中，负整数常量在某些编译器/环境下会被先解析为 “无符号数”
+    比如-2147483648会被拆解为-(2147483648)，而 2147483648超出了32位int的范围，会被提升为unsigned int
+    INT_MIN可能先被转成unsigned int（值为 2147483648），再转double（值为 2147483648.0），此时比较逻辑完全错误
+    (double)INT_MIN强制把INT_MIN先转成浮点型的-2147483648.0，避开“无符号提升”陷阱，保证比较逻辑正确 */
     {
         item->valueint = INT_MIN;
     }
@@ -545,10 +563,11 @@ loop_end:
         item->valueint = (int)number;
     }
 
-    item->type = cJSON_Number;
+    item->type = cJSON_Number;  //cJSON第93行#define cJSON_Number (1 << 3)
 
-    input_buffer->offset += (size_t)(after_end - number_c_string);
+    input_buffer->offset += (size_t)(after_end - number_c_string);  //更新解析缓冲区的偏移量，让解析器跳过已解析的数字片段，继续解析后续内容
     /* free the temporary buffer */
+    /* 释放临时缓冲区 */
     input_buffer->hooks.deallocate(number_c_string);
     return true;
 }
