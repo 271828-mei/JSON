@@ -787,6 +787,7 @@ static cJSON_bool compare_double(double a, double b)
 }
 
 /* Render the number nicely from the given item into a string. */
+/* 从传入的指定数据对象中提取数字，并对其进行友好的格式化处理，最终转换为一个字符串返回 */
 static cJSON_bool print_number(const cJSON * const item, printbuffer * const output_buffer)
 {
     unsigned char *output_pointer = NULL;
@@ -794,7 +795,8 @@ static cJSON_bool print_number(const cJSON * const item, printbuffer * const out
     int length = 0;
     size_t i = 0;
     unsigned char number_buffer[26] = {0}; /* temporary buffer to print the number into */
-    unsigned char decimal_point = get_decimal_point();
+    //临时缓冲区用来向其中打印数字
+    unsigned char decimal_point = get_decimal_point();  //获取当前系统区域设置下的小数点字符
     double test = 0.0;
 
     if (output_buffer == NULL)
@@ -803,34 +805,44 @@ static cJSON_bool print_number(const cJSON * const item, printbuffer * const out
     }
 
     /* This checks for NaN and Infinity */
+    //这是item->valuedouble关于NaN和无穷大的检查
     if (isnan(d) || isinf(d))
     {
-        length = sprintf((char*)number_buffer, "null");
+        length = sprintf((char*)number_buffer, "null");  //null表示空/无效
+        /* sprintf函数：C语言标准库函数，作用是将格式化的字符串写入指定的字符数组（缓冲区）
+        返回成功写入的字符数（不包含字符串结束符 \0）*/
     }
-    else if(d == (double)item->valueint)
+    else if(d == (double)item->valueint)  //item->valuedouble小数部分为0
     {
         length = sprintf((char*)number_buffer, "%d", item->valueint);
     }
     else
     {
         /* Try 15 decimal places of precision to avoid nonsignificant nonzero digits */
+        /* 采用15位小数的精度进行处理，以此来避免输出那些看起来非零、但实际上没有实际意义的尾数 */
         length = sprintf((char*)number_buffer, "%1.15g", d);
 
         /* Check whether the original double can be recovered */
+        //检查原始的数字是否可以恢复
         if ((sscanf((char*)number_buffer, "%lg", &test) != 1) || !compare_double((double)test, d))
+        // 尝试从缓冲区字符串中解析出数字到test
+        // 如果解析失败（返回值≠1），或者解析出的数字和原始d不一致则视为数字不可恢复
         {
             /* If not, print with 17 decimal places of precision */
+            //如果采用15位小数的精度进行处理后数字不相等使用17位小数的精度
             length = sprintf((char*)number_buffer, "%1.17g", d);
         }
     }
 
     /* sprintf failed or buffer overrun occurred */
+    //sprintf失败或number_buffer（临时缓冲区）空间不足
     if ((length < 0) || (length > (int)(sizeof(number_buffer) - 1)))
     {
         return false;
     }
 
     /* reserve appropriate space in the output */
+    //在输出中，为即将写入的数据预留出大小合适的空间
     output_pointer = ensure(output_buffer, (size_t)length + sizeof(""));
     if (output_pointer == NULL)
     {
@@ -839,6 +851,7 @@ static cJSON_bool print_number(const cJSON * const item, printbuffer * const out
 
     /* copy the printed number to the output and replace locale
      * dependent decimal point with '.' */
+    //复制打印的数字到输出缓冲区同时将当前系统区域设置（locale）下的小数点字符更换为'.'
     for (i = 0; i < ((size_t)length); i++)
     {
         if (number_buffer[i] == decimal_point)
@@ -857,6 +870,7 @@ static cJSON_bool print_number(const cJSON * const item, printbuffer * const out
 }
 
 /* parse 4 digit hexadecimal number */
+//从指定的数据中，解析出一个4位的十六进制数
 static unsigned parse_hex4(const unsigned char * const input)
 {
     unsigned int h = 0;
@@ -867,17 +881,17 @@ static unsigned parse_hex4(const unsigned char * const input)
         /* parse digit */
         if ((input[i] >= '0') && (input[i] <= '9'))
         {
-            h += (unsigned int) input[i] - '0';
+            h += (unsigned int) input[i] - '0';  //0到9十六进制和十进制一致
         }
         else if ((input[i] >= 'A') && (input[i] <= 'F'))
         {
-            h += (unsigned int) 10 + input[i] - 'A';
+            h += (unsigned int) 10 + input[i] - 'A';  //A到F对应10到15
         }
         else if ((input[i] >= 'a') && (input[i] <= 'f'))
         {
-            h += (unsigned int) 10 + input[i] - 'a';
+            h += (unsigned int) 10 + input[i] - 'a';  //同上
         }
-        else /* invalid */
+        else /* invalid */  //无效的字符出现直接返回0
         {
             return 0;
         }
@@ -885,6 +899,7 @@ static unsigned parse_hex4(const unsigned char * const input)
         if (i < 3)
         {
             /* shift left to make place for the next nibble */
+            //左移动4位给下一位数字留空间（2进制4位对应16进制1位）
             h = h << 4;
         }
     }
