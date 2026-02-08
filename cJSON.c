@@ -651,12 +651,15 @@ typedef struct
     size_t length;
     size_t offset;
     size_t depth; /* current nesting depth (for formatted printing) */
-    cJSON_bool noalloc;
+    //当前嵌套深度（用于格式化打印）
+    cJSON_bool noalloc;  //标记当前打印缓冲区是否允许动态分配/重新分配内存
     cJSON_bool format; /* is this print a formatted print */
+    //本次打印操作是否属于格式化打印
     internal_hooks hooks;
 } printbuffer;
 
 /* realloc printbuffer if necessary to have at least "needed" bytes more */
+/* 如果当前打印缓冲区的剩余空间不足，就调用realloc重新分配内存，确保缓冲区至少能额外容纳needed个字节的内容 */
 static unsigned char* ensure(printbuffer * const p, size_t needed)
 {
     unsigned char *newbuffer = NULL;
@@ -667,15 +670,17 @@ static unsigned char* ensure(printbuffer * const p, size_t needed)
         return NULL;
     }
 
-    if ((p->length > 0) && (p->offset >= p->length))
+    if ((p->length > 0) && (p->offset >= p->length))  //有效偏移量的范围是大于等于0, 小于length
     {
         /* make sure that offset is valid */
+        /* 确保这个偏移量（offset）是合法有效的，不会超出允许的范围 */
         return NULL;
     }
 
     if (needed > INT_MAX)
     {
         /* sizes bigger than INT_MAX are currently not supported */
+        //当前函数不支持处理大小超过int类型最大值（INT_MAX）的尺寸
         return NULL;
     }
 
@@ -683,16 +688,19 @@ static unsigned char* ensure(printbuffer * const p, size_t needed)
     if (needed <= p->length)
     {
         return p->buffer + p->offset;
+        //若缓冲区剩余空间足够容纳needed字节，则返回缓冲区中可写入的起始位置指针
     }
 
-    if (p->noalloc) {
+    if (p->noalloc) {  //剩余空间不足且当前打印缓冲区不允许重新分配内存
         return NULL;
     }
 
     /* calculate new buffer size */
+    /* 计算新缓冲区的大小 */
     if (needed > (INT_MAX / 2))
     {
         /* overflow of int, use INT_MAX if possible */
+        /* 当计算结果导致int类型溢出时，在可行的情况下，将结果替换为int类型的最大值INT_MAX */
         if (needed <= INT_MAX)
         {
             newsize = INT_MAX;
@@ -704,16 +712,17 @@ static unsigned char* ensure(printbuffer * const p, size_t needed)
     }
     else
     {
-        newsize = needed * 2;
+        newsize = needed * 2;  //避免频繁扩容，预留冗余空间
     }
 
     if (p->hooks.reallocate != NULL)
     {
         /* reallocate with realloc if available */
+        /* 在需要扩容内存时，优先使用标准库的realloc函数来完成重分配操作（如果可行） */
         newbuffer = (unsigned char*)p->hooks.reallocate(p->buffer, newsize);
-        if (newbuffer == NULL)
+        if (newbuffer == NULL)  //重分配失败
         {
-            p->hooks.deallocate(p->buffer);
+            p->hooks.deallocate(p->buffer);  //防止内存泄漏，重置缓冲区状态，避免野指针
             p->length = 0;
             p->buffer = NULL;
 
@@ -723,8 +732,9 @@ static unsigned char* ensure(printbuffer * const p, size_t needed)
     else
     {
         /* otherwise reallocate manually */
+        /* 如果（自定义的 reallocate 函数）不可用，那就手动实现内存重分配的逻辑 */
         newbuffer = (unsigned char*)p->hooks.allocate(newsize);
-        if (!newbuffer)
+        if (!newbuffer)  //分配失败
         {
             p->hooks.deallocate(p->buffer);
             p->length = 0;
@@ -733,7 +743,7 @@ static unsigned char* ensure(printbuffer * const p, size_t needed)
             return NULL;
         }
 
-        memcpy(newbuffer, p->buffer, p->offset + 1);
+        memcpy(newbuffer, p->buffer, p->offset + 1);  //p->offset是原缓冲区中已使用的字节数，+1是为了兼容C语言字符串的终止符规则
         p->hooks.deallocate(p->buffer);
     }
     p->length = newsize;
@@ -743,23 +753,37 @@ static unsigned char* ensure(printbuffer * const p, size_t needed)
 }
 
 /* calculate the new length of the string in a printbuffer and update the offset */
-static void update_offset(printbuffer * const buffer)
+/* 算打印缓冲区（printbuffer）中字符串的新长度 */
+static void update_offset(printbuffer * const buffer)  //更新偏移量（offset）
 {
     const unsigned char *buffer_pointer = NULL;
     if ((buffer == NULL) || (buffer->buffer == NULL))
     {
         return;
     }
-    buffer_pointer = buffer->buffer + buffer->offset;
+    buffer_pointer = buffer->buffer + buffer->offset;  //定位到当前offset指向的位置（待计算长度的字符串起始地址）
 
     buffer->offset += strlen((const char*)buffer_pointer);
 }
 
 /* securely comparison of floating-point variables */
+/* 对浮点型变量进行安全的比较 */
+/* 浮点数（float/double）在计算机中是二进制近似存储，而非精确存储，直接用==会导致反直觉的结果
+累加后误差放大，可能会导致0.1+0.2并不等于0.3，直接用==比较会判定为不相等 */
 static cJSON_bool compare_double(double a, double b)
 {
     double maxVal = fabs(a) > fabs(b) ? fabs(a) : fabs(b);
-    return (fabs(a - b) <= maxVal * DBL_EPSILON);
+    /* fabs是C标准库<math.h>中的函数
+    作用：返回一个浮点数的绝对值 */
+    return (fabs(a - b) <= maxVal * DBL_EPSILON);  //b与a的差值在一定范围内视为相等
+    /* 不妨设|a|>|b|，a>0 （若a=0，b与a的差值不超过DBL_EPSILON为真）
+    可以化解得到|1-b/a|<=DBL_EPSILON
+    相当于 1-DBL_EPSILON<=b/a<=1+DBL_EPSILON
+    即 a(1-DBL_EPSILON)<=b<=a(1+DBL_EPSILON) */
+    /* DBL_EPSILON是C标准库<float.h>中定义的宏，专门针对double类型（双精度浮点数）
+    数值大小：约等于2.220446049250313e-16（即 0.000000000000000222）
+    大于0的最小double型浮点数，满足1.0 + DBL_EPSILON > 1.0*/
+  
 }
 
 /* Render the number nicely from the given item into a string. */
