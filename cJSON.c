@@ -1084,6 +1084,7 @@ static cJSON_bool parse_string(cJSON * const item, parse_buffer * const input_bu
         }
 
         /* This is at most how much we need for the output */
+        /* 是我们为输出缓冲区所需分配的最大空间 */
         allocation_length = (size_t) (input_end - buffer_at_offset(input_buffer)) - skipped_bytes;
         output = (unsigned char*)input_buffer->hooks.allocate(allocation_length + sizeof(""));
         if (output == NULL)
@@ -1093,18 +1094,18 @@ static cJSON_bool parse_string(cJSON * const item, parse_buffer * const input_bu
     }
 
     output_pointer = output;
-    /* loop through the string literal */
+    /* loop through the string literal */  //遍历这个字符串字面量
     while (input_pointer < input_end)
     {
         if (*input_pointer != '\\')
         {
             *output_pointer++ = *input_pointer++;
         }
-        /* escape sequence */
+        /* escape sequence */  //处理转义序列
         else
         {
             unsigned char sequence_length = 2;
-            if ((input_end - input_pointer) < 1)
+            if ((input_end - input_pointer) < 1)  //确保反斜杠后至少还有1个字符
             {
                 goto fail;
             }
@@ -1132,12 +1133,12 @@ static cJSON_bool parse_string(cJSON * const item, parse_buffer * const input_bu
                     *output_pointer++ = input_pointer[1];
                     break;
 
-                /* UTF-16 literal */
+                /* UTF-16 literal */  //UTF-16字面量（\uXXXX形式）
                 case 'u':
                     sequence_length = utf16_literal_to_utf8(input_pointer, input_end, &output_pointer);
                     if (sequence_length == 0)
                     {
-                        /* failed to convert UTF16-literal to UTF-8 */
+                        /* failed to convert UTF16-literal to UTF-8 */  //转换失败
                         goto fail;
                     }
                     break;
@@ -1149,7 +1150,7 @@ static cJSON_bool parse_string(cJSON * const item, parse_buffer * const input_bu
         }
     }
 
-    /* zero terminate the output */
+    /* zero terminate the output */  //给输出字符串添加零终止符'\0'
     *output_pointer = '\0';
 
     item->type = cJSON_String;
@@ -1169,7 +1170,7 @@ fail:
 
     if (input_pointer != NULL)
     {
-        input_buffer->offset = (size_t)(input_pointer - input_buffer->content);
+        input_buffer->offset = (size_t)(input_pointer - input_buffer->content);  //错误定位同时解析器状态恢复
     }
 
     return false;
