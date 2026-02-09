@@ -1061,13 +1061,13 @@ static cJSON_bool parse_string(cJSON * const item, parse_buffer * const input_bu
         /* calculate approximate size of the output (overestimate) */  //计算output的大概大小
         size_t allocation_length = 0;
         size_t skipped_bytes = 0;
-        while (((size_t)(input_end - input_buffer->content) < input_buffer->length) && (*input_end != '\"'))  
+        while (((size_t)(input_end - input_buffer->content) < input_buffer->length) && (*input_end != '\"'))  //找到字符串中的反斜杠的个数
         //偏移量还未达到限制且还为到最后一个字符
         {
             /* is escape sequence */  //标记后续代码块用于判断/处理转义序列
             if (input_end[0] == '\\')
             {
-                if ((size_t)(input_end + 1 - input_buffer->content) >= input_buffer->length)  //input_end指向最后一个字符
+                if ((size_t)(input_end + 1 - input_buffer->content) >= input_buffer->length)
                 {
                     /* prevent buffer overflow when last input character is a backslash */
                     //防止当输入的最后一个字符是反斜杠时出现缓冲区溢出的问题
@@ -1078,7 +1078,7 @@ static cJSON_bool parse_string(cJSON * const item, parse_buffer * const input_bu
             }
             input_end++;
         }
-        if (((size_t)(input_end - input_buffer->content) >= input_buffer->length) || (*input_end != '\"'))
+        if (((size_t)(input_end - input_buffer->content) >= input_buffer->length) || (*input_end != '\"'))  //验证循环终止的原因是否是找到合法的结束双引号
         {
             goto fail; /* string ended unexpectedly */
         }
