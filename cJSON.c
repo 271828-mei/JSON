@@ -1004,7 +1004,7 @@ static unsigned char utf16_literal_to_utf8(const unsigned char * const input_poi
     }
     else if (codepoint <= 0x10FFFF)
     {
-        /* four bytes, encoding 1110xxxx 10xxxxxx 10xxxxxx 10xxxxxx */
+        /* four bytes, encoding 1110xxxx 10xxxxxx 10xxxxxx 10xxxxxx */  //这里注释有误格式应为11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
         utf8_length = 4;
         first_byte_mark = 0xF0; /* 11110000 */
     }
@@ -1034,11 +1034,11 @@ static unsigned char utf16_literal_to_utf8(const unsigned char * const input_poi
         (*output_pointer)[0] = (unsigned char)(codepoint & 0x7F);
     }
 
-    *output_pointer += utf8_length;
+    *output_pointer += utf8_length;  //核心目的是让输出指针指向本次编码后的下一个空闲位置，为下一次编码做准备
 
     return sequence_length;
 
-fail:
+  fail:
     return 0;
 }
 
