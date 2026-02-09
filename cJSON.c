@@ -909,6 +909,8 @@ static unsigned parse_hex4(const unsigned char * const input)
 
 /* converts a UTF-16 literal to UTF-8
  * A literal can be one or two sequences of the form \uXXXX */
+//将UTF-16格式的字面量转换为UTF-8格式，这种字面量可以是1个或2个\uXXXX形式的序列
+//UTF-16是Windows系统、Java/JavaScript等语言的内部编码，但文件存储、网络传输通常用 UTF-8
 static unsigned char utf16_literal_to_utf8(const unsigned char * const input_pointer, const unsigned char * const input_end, unsigned char **output_pointer)
 {
     long unsigned int codepoint = 0;
@@ -919,23 +921,24 @@ static unsigned char utf16_literal_to_utf8(const unsigned char * const input_poi
     unsigned char sequence_length = 0;
     unsigned char first_byte_mark = 0;
 
-    if ((input_end - first_sequence) < 6)
+    if ((input_end - first_sequence) < 6)  //1个\uXXXX有6个字符
     {
         /* input ends unexpectedly */
+        //输入意外终止
         goto fail;
     }
 
-    /* get the first utf16 sequence */
-    first_code = parse_hex4(first_sequence + 2);
+    /* get the first utf16 sequence */  //得到第一个UTF-16序列
+    first_code = parse_hex4(first_sequence + 2);  //+2跳过\u
 
-    /* check that the code is valid */
-    if (((first_code >= 0xDC00) && (first_code <= 0xDFFF)))
+    /* check that the code is valid */  //判断UTF-16编码是否合法
+    if (((first_code >= 0xDC00) && (first_code <= 0xDFFF)))  //检查这个编码单元是否落在低位代理区间（低位代理不能在首位）
     {
         goto fail;
     }
 
-    /* UTF16 surrogate pair */
-    if ((first_code >= 0xD800) && (first_code <= 0xDBFF))
+    /* UTF16 surrogate pair */  //UTF-16代理对
+    if ((first_code >= 0xD800) && (first_code <= 0xDBFF))  //检查第一个编码单元是否落在高位代理区间
     {
         const unsigned char *second_sequence = first_sequence + 6;
         unsigned int second_code = 0;
@@ -943,28 +946,32 @@ static unsigned char utf16_literal_to_utf8(const unsigned char * const input_poi
 
         if ((input_end - second_sequence) < 6)
         {
-            /* input ends unexpectedly */
+            /* input ends unexpectedly */  //输入结束异常（位数不足）
             goto fail;
         }
 
-        if ((second_sequence[0] != '\\') || (second_sequence[1] != 'u'))
+        if ((second_sequence[0] != '\\') || (second_sequence[1] != 'u'))  //检查UTF-16代理对的第二个编码单元是否符合\uXXXX的格式要求
         {
-            /* missing second half of the surrogate pair */
+            /* missing second half of the surrogate pair */  //代理对的后半部分缺失
             goto fail;
         }
 
-        /* get the second utf16 sequence */
+        /* get the second utf16 sequence */  //获取第二个UTF-16序列
         second_code = parse_hex4(second_sequence + 2);
         /* check that the code is valid */
-        if ((second_code < 0xDC00) || (second_code > 0xDFFF))
+        if ((second_code < 0xDC00) || (second_code > 0xDFFF))  //低位检查
         {
-            /* invalid second half of the surrogate pair */
+            /* invalid second half of the surrogate pair */  //代理对的后半部分无效
             goto fail;
         }
 
 
         /* calculate the unicode codepoint from the surrogate pair */
+        /* 从代理对计算出对应的Unicode码点
+        计算公式：0x10000 + (H - 0xD800) * 0x400 + (L - 0xDC00)*/
         codepoint = 0x10000 + (((first_code & 0x3FF) << 10) | (second_code & 0x3FF));
+        //0x3FF的作用：只保留低10位，高位全部清零
+        //* 0x400与<<10效果一致
     }
     else
     {
@@ -974,21 +981,24 @@ static unsigned char utf16_literal_to_utf8(const unsigned char * const input_poi
 
     /* encode as UTF-8
      * takes at maximum 4 bytes to encode:
-     * 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx */
+     * 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx */  //将Unicode码点编码为UTF-8格式，且UTF-8编码单个字符最多占用4字节，并给出了4字节编码的二进制模板
     if (codepoint < 0x80)
     {
         /* normal ascii, encoding 0xxxxxxx */
+        /* 普通ASCII字符（范围是 0x00 ~ 0x7F）
+        普通ASCII字符的UTF-8编码格式为0xxxxxxx */
         utf8_length = 1;
     }
     else if (codepoint < 0x800)
     {
         /* two bytes, encoding 110xxxxx 10xxxxxx */
+        /* 使用2字节编码，格式为110xxxxx 10xxxxxx */
         utf8_length = 2;
         first_byte_mark = 0xC0; /* 11000000 */
     }
     else if (codepoint < 0x10000)
     {
-        /* three bytes, encoding 1110xxxx 10xxxxxx 10xxxxxx */
+        /* three bytes, encoding 1110xxxx 10xxxxxx 10xxxxxx */  //3字节
         utf8_length = 3;
         first_byte_mark = 0xE0; /* 11100000 */
     }
@@ -1001,15 +1011,18 @@ static unsigned char utf16_literal_to_utf8(const unsigned char * const input_poi
     else
     {
         /* invalid unicode codepoint */
+        //codepoint数值越界
         goto fail;
     }
 
-    /* encode as utf8 */
+    /* encode as utf8 */  //转换成UTF-8编码格式
     for (utf8_position = (unsigned char)(utf8_length - 1); utf8_position > 0; utf8_position--)
+    //从后往前填充UTF-8的后续字节（都是 10xxxxxx 格式），最后填充首字节
     {
         /* 10xxxxxx */
         (*output_pointer)[utf8_position] = (unsigned char)((codepoint | 0x80) & 0xBF);
-        codepoint >>= 6;
+        //先通过| 0x80把字节最高位设为1（保证前缀是 10），再通过& 0xBF 把次高位设为0
+        codepoint >>= 6;  //把码点的最后6位扔掉
     }
     /* encode first byte */
     if (utf8_length > 1)
