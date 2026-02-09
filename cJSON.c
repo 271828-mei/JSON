@@ -1043,6 +1043,7 @@ static unsigned char utf16_literal_to_utf8(const unsigned char * const input_poi
 }
 
 /* Parse the input text into an unescaped cinput, and populate item. */
+//将输入的文本解析成未转义的cinput变量/数据结构，并把解析后的结果填充到item这个数据项（结构体/对象）中
 static cJSON_bool parse_string(cJSON * const item, parse_buffer * const input_buffer)
 {
     const unsigned char *input_pointer = buffer_at_offset(input_buffer) + 1;
@@ -1050,27 +1051,29 @@ static cJSON_bool parse_string(cJSON * const item, parse_buffer * const input_bu
     unsigned char *output_pointer = NULL;
     unsigned char *output = NULL;
 
-    /* not a string */
-    if (buffer_at_offset(input_buffer)[0] != '\"')
+    /* not a string */  //不是一个字符串
+    if (buffer_at_offset(input_buffer)[0] != '\"')  //JSON规范中明确规定：字符串必须被双引号 
     {
-        goto fail;
+        goto fail;  //第一个字符不是双引号
     }
 
     {
-        /* calculate approximate size of the output (overestimate) */
+        /* calculate approximate size of the output (overestimate) */  //计算output的大概大小
         size_t allocation_length = 0;
         size_t skipped_bytes = 0;
         while (((size_t)(input_end - input_buffer->content) < input_buffer->length) && (*input_end != '\"'))
+        //偏移量还未达到限制且还为到最后一个字符
         {
-            /* is escape sequence */
+            /* is escape sequence */  //标记后续代码块用于判断/处理转义序列
             if (input_end[0] == '\\')
             {
-                if ((size_t)(input_end + 1 - input_buffer->content) >= input_buffer->length)
+                if ((size_t)(input_end + 1 - input_buffer->content) >= input_buffer->length)  //input_end指向最后一个字符
                 {
                     /* prevent buffer overflow when last input character is a backslash */
+                    //防止当输入的最后一个字符是反斜杠时出现缓冲区溢出的问题
                     goto fail;
                 }
-                skipped_bytes++;
+                skipped_bytes++;  
                 input_end++;
             }
             input_end++;
