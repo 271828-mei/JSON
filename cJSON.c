@@ -1061,7 +1061,7 @@ static cJSON_bool parse_string(cJSON * const item, parse_buffer * const input_bu
         /* calculate approximate size of the output (overestimate) */  //计算output的大概大小
         size_t allocation_length = 0;
         size_t skipped_bytes = 0;
-        while (((size_t)(input_end - input_buffer->content) < input_buffer->length) && (*input_end != '\"'))
+        while (((size_t)(input_end - input_buffer->content) < input_buffer->length) && (*input_end != '\"'))  
         //偏移量还未达到限制且还为到最后一个字符
         {
             /* is escape sequence */  //标记后续代码块用于判断/处理转义序列
@@ -1073,7 +1073,7 @@ static cJSON_bool parse_string(cJSON * const item, parse_buffer * const input_bu
                     //防止当输入的最后一个字符是反斜杠时出现缓冲区溢出的问题
                     goto fail;
                 }
-                skipped_bytes++;  
+                skipped_bytes++;  //跳过反斜杠
                 input_end++;
             }
             input_end++;
