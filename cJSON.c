@@ -1261,7 +1261,7 @@ static cJSON_bool print_string_ptr(const unsigned char * const input, printbuffe
         else
         {
             /* character needs to be escaped */
-            *output_pointer++ = '\\';
+            *output_pointer++ = '\\';  
             switch (*input_pointer)
             {
                 case '\\':
