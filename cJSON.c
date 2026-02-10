@@ -1369,18 +1369,19 @@ CJSON_PUBLIC(cJSON *) cJSON_ParseWithOpts(const char *value, const char **return
     }
 
     /* Adding null character size due to require_null_terminated. */
+    //由于要求字符串必须以空字符（null character）结尾，因此在计算/分配长度时，需要额外加上这个空字符占用的1个字节空间
     buffer_length = strlen(value) + sizeof("");
 
     return cJSON_ParseWithLengthOpts(value, buffer_length, return_parse_end, require_null_terminated);
 }
 
-/* Parse an object - create a new root, and populate. */
+/* Parse an object - create a new root, and populate. */  //解析一个（JSON）对象，创建一个新的根节点，并填充
 CJSON_PUBLIC(cJSON *) cJSON_ParseWithLengthOpts(const char *value, size_t buffer_length, const char **return_parse_end, cJSON_bool require_null_terminated)
 {
     parse_buffer buffer = { 0, 0, 0, 0, { 0, 0, 0 } };
     cJSON *item = NULL;
 
-    /* reset error position */
+    /* reset error position */  //重置错误位置
     global_error.json = NULL;
     global_error.position = 0;
 
@@ -1395,18 +1396,19 @@ CJSON_PUBLIC(cJSON *) cJSON_ParseWithLengthOpts(const char *value, size_t buffer
     buffer.hooks = global_hooks;
 
     item = cJSON_New_Item(&global_hooks);
-    if (item == NULL) /* memory fail */
+    if (item == NULL) /* memory fail */  //内存分配失败
     {
         goto fail;
     }
 
     if (!parse_value(item, buffer_skip_whitespace(skip_utf8_bom(&buffer))))
     {
-        /* parse failure. ep is set. */
+        /* parse failure. ep is set. */  //解析失败，错误位置指针（ep）已被设置
         goto fail;
     }
 
     /* if we require null-terminated JSON without appended garbage, skip and then check for a null terminator */
+    //如果我们要求输入的JSON字符串必须是以空字符结尾的，且末尾不能附带无效垃圾数据，那么解析完成后先跳过空白字符，再检查字符串是否确实以空字符\0结尾
     if (require_null_terminated)
     {
         buffer_skip_whitespace(&buffer);
@@ -1415,7 +1417,7 @@ CJSON_PUBLIC(cJSON *) cJSON_ParseWithLengthOpts(const char *value, size_t buffer
             goto fail;
         }
     }
-    if (return_parse_end)
+    if (return_parse_end)  //将JSON解析完成后的最终偏移位置，赋值给这个指针指向的地址
     {
         *return_parse_end = (const char*)buffer_at_offset(&buffer);
     }
@@ -1425,7 +1427,7 @@ CJSON_PUBLIC(cJSON *) cJSON_ParseWithLengthOpts(const char *value, size_t buffer
 fail:
     if (item != NULL)
     {
-        cJSON_Delete(item);
+        cJSON_Delete(item);  //释放当前节点所在的整条同级链表（从 item 开始往后）
     }
 
     if (value != NULL)
@@ -1436,11 +1438,11 @@ fail:
 
         if (buffer.offset < buffer.length)
         {
-            local_error.position = buffer.offset;
+            local_error.position = buffer.offset;  //找到错误位置
         }
         else if (buffer.length > 0)
         {
-            local_error.position = buffer.length - 1;
+            local_error.position = buffer.length - 1;  //越界导致错误则定位到最后一个位置
         }
 
         if (return_parse_end != NULL)
@@ -1454,7 +1456,7 @@ fail:
     return NULL;
 }
 
-/* Default options for cJSON_Parse */
+/* Default options for cJSON_Parse */  //这是cJSON_Parse函数使用的默认解析选项
 CJSON_PUBLIC(cJSON *) cJSON_Parse(const char *value)
 {
     return cJSON_ParseWithOpts(value, 0, 0);
