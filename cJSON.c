@@ -1178,12 +1178,13 @@ fail:
 
 /* Render the cstring provided to an escaped version that can be printed. */
 static cJSON_bool print_string_ptr(const unsigned char * const input, printbuffer * const output_buffer)
+//字符串转义处理，把不可打印/有特殊含义的字符，转换成人类可读的转义形式
 {
     const unsigned char *input_pointer = NULL;
     unsigned char *output = NULL;
     unsigned char *output_pointer = NULL;
     size_t output_length = 0;
-    /* numbers of additional characters needed for escaping */
+    /* numbers of additional characters needed for escaping */  //转义所需的额外字符的数量
     size_t escape_characters = 0;
 
     if (output_buffer == NULL)
@@ -1191,7 +1192,7 @@ static cJSON_bool print_string_ptr(const unsigned char * const input, printbuffe
         return false;
     }
 
-    /* empty string */
+    /* empty string */  //空字符
     if (input == NULL)
     {
         output = ensure(output_buffer, sizeof("\"\""));
@@ -1199,13 +1200,13 @@ static cJSON_bool print_string_ptr(const unsigned char * const input, printbuffe
         {
             return false;
         }
-        strcpy((char*)output, "\"\"");
+        strcpy((char*)output, "\"\"");  //空字符只输出双引号
 
         return true;
     }
 
-    /* set "flag" to 1 if something needs to be escaped */
-    for (input_pointer = input; *input_pointer; input_pointer++)
+    /* set "flag" to 1 if something needs to be escaped */   //如果有内容需要被转义将flag设置为1
+    for (input_pointer = input; *input_pointer; input_pointer++)  //*input_pointer等价于*input_pointer!='\0'
     {
         switch (*input_pointer)
         {
@@ -1216,14 +1217,14 @@ static cJSON_bool print_string_ptr(const unsigned char * const input, printbuffe
             case '\n':
             case '\r':
             case '\t':
-                /* one character escape sequence */
-                escape_characters++;
+                /* one character escape sequence */  //单个字符型的转义序列
+                escape_characters++;  //例如\n->\\n多一个字符
                 break;
             default:
-                if (*input_pointer < 32)
+                if (*input_pointer < 32)  //表示判断这个字符是否属于ASCII控制字符（不可打印，不可见）（0~31）
                 {
-                    /* UTF-16 escape sequence uXXXX */
-                    escape_characters += 5;
+                    /* UTF-16 escape sequence uXXXX */  //UTF-16字面量（\uXXXX形式）
+                    escape_characters += 5;  //从1个字符转换为6个字符
                 }
                 break;
         }
@@ -1236,12 +1237,12 @@ static cJSON_bool print_string_ptr(const unsigned char * const input, printbuffe
         return false;
     }
 
-    /* no characters have to be escaped */
+    /* no characters have to be escaped */  //无转义字符
     if (escape_characters == 0)
     {
-        output[0] = '\"';
+        output[0] = '\"';  //双引号开头
         memcpy(output + 1, input, output_length);
-        output[output_length + 1] = '\"';
+        output[output_length + 1] = '\"';  //双引号结尾
         output[output_length + 2] = '\0';
 
         return true;
@@ -1252,7 +1253,7 @@ static cJSON_bool print_string_ptr(const unsigned char * const input, printbuffe
     /* copy the string */
     for (input_pointer = input; *input_pointer != '\0'; (void)input_pointer++, output_pointer++)
     {
-        if ((*input_pointer > 31) && (*input_pointer != '\"') && (*input_pointer != '\\'))
+        if ((*input_pointer > 31) && (*input_pointer != '\"') && (*input_pointer != '\\'))  //不是控制字符，双引号，反斜杠
         {
             /* normal character, copy */
             *output_pointer = *input_pointer;
@@ -1260,7 +1261,7 @@ static cJSON_bool print_string_ptr(const unsigned char * const input, printbuffe
         else
         {
             /* character needs to be escaped */
-            *output_pointer++ = '\\';
+            *output_pointer++ = '\\';  
             switch (*input_pointer)
             {
                 case '\\':
