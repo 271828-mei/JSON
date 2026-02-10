@@ -1218,7 +1218,7 @@ static cJSON_bool print_string_ptr(const unsigned char * const input, printbuffe
             case '\r':
             case '\t':
                 /* one character escape sequence */  //单个字符型的转义序列
-                escape_characters++;  //例如\n->\\n多一个字符
+                escape_characters++;  //例如\n->'\''n'多一个字符
                 break;
             default:
                 if (*input_pointer < 32)  //表示判断这个字符是否属于ASCII控制字符（不可打印，不可见）（0~31）
@@ -1261,7 +1261,7 @@ static cJSON_bool print_string_ptr(const unsigned char * const input, printbuffe
         else
         {
             /* character needs to be escaped */
-            *output_pointer++ = '\\';  
+            *output_pointer++ = '\\';  //先输出一个反斜杠（所有控制字符都需要）
             switch (*input_pointer)
             {
                 case '\\':
@@ -1286,9 +1286,9 @@ static cJSON_bool print_string_ptr(const unsigned char * const input, printbuffe
                     *output_pointer = 't';
                     break;
                 default:
-                    /* escape and print as unicode codepoint */
+                    /* escape and print as unicode codepoint */  //将字符进行转义处理，并以Unicode码点的形式打印输出
                     sprintf((char*)output_pointer, "u%04x", *input_pointer);
-                    output_pointer += 4;
+                    output_pointer += 4;  //前面output_pointer已经自增了一次
                     break;
             }
         }
@@ -1305,7 +1305,7 @@ static cJSON_bool print_string(const cJSON * const item, printbuffer * const p)
     return print_string_ptr((unsigned char*)item->valuestring, p);
 }
 
-/* Predeclare these prototypes. */
+/* Predeclare these prototypes. */  //预先声明函数
 static cJSON_bool parse_value(cJSON * const item, parse_buffer * const input_buffer);
 static cJSON_bool print_value(const cJSON * const item, printbuffer * const output_buffer);
 static cJSON_bool parse_array(cJSON * const item, parse_buffer * const input_buffer);
@@ -1313,7 +1313,7 @@ static cJSON_bool print_array(const cJSON * const item, printbuffer * const outp
 static cJSON_bool parse_object(cJSON * const item, parse_buffer * const input_buffer);
 static cJSON_bool print_object(const cJSON * const item, printbuffer * const output_buffer);
 
-/* Utility to jump whitespace and cr/lf */
+/* Utility to jump whitespace and cr/lf */  //这是一个辅助工具函数，作用是跳过字符串中的空白字符（空格、制表符）以及回车符（\r）、换行符（\n）
 static parse_buffer *buffer_skip_whitespace(parse_buffer * const buffer)
 {
     if ((buffer == NULL) || (buffer->content == NULL))
@@ -1321,33 +1321,37 @@ static parse_buffer *buffer_skip_whitespace(parse_buffer * const buffer)
         return NULL;
     }
 
-    if (cannot_access_at_index(buffer, 0))
+    if (cannot_access_at_index(buffer, 0))  //指定的索引位置不能安全访问该缓冲区的内容
     {
         return buffer;
     }
 
     while (can_access_at_index(buffer, 0) && (buffer_at_offset(buffer)[0] <= 32))
     {
-       buffer->offset++;
+       buffer->offset++;  //偏移量+1，跳过当前字符
     }
 
     if (buffer->offset == buffer->length)
     {
-        buffer->offset--;
+        buffer->offset--;  //防止全是空白字符，最后一位offset++会越界
     }
 
     return buffer;
 }
 
 /* skip the UTF-8 BOM (byte order mark) if it is at the beginning of a buffer */
+//如果UTF-8格式的字节顺序标记（BOM）出现在缓冲区的起始位置，就跳过这个BOM序列
 static parse_buffer *skip_utf8_bom(parse_buffer * const buffer)
 {
     if ((buffer == NULL) || (buffer->content == NULL) || (buffer->offset != 0))
+    /* UTF-8 BOM只会出现在缓冲区的最开头，如果光标已经不在起始位置（offset≠0），说明当前位置不可能是BOM，直接返回 NULL */
+    //UTF-8 BOM是0xEF 0xBB 0xBF三个字节的整体，仅当光标在offset=0时，才能完整检测这个序列
     {
         return NULL;
     }
 
     if (can_access_at_index(buffer, 4) && (strncmp((const char*)buffer_at_offset(buffer), "\xEF\xBB\xBF", 3) == 0))
+    //can_access_at_index(buffer, 4)确保偏移量加3不会越界
     {
         buffer->offset += 3;
     }
