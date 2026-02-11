@@ -1477,24 +1477,24 @@ static unsigned char *print(const cJSON * const item, cJSON_bool format, const i
 
     memset(buffer, 0, sizeof(buffer));
 
-    /* create buffer */
+    /* create buffer */  //创造缓冲区
     buffer->buffer = (unsigned char*) hooks->allocate(default_buffer_size);
     buffer->length = default_buffer_size;
-    buffer->format = format;
+    buffer->format = format;  //格式化打印判断变量
     buffer->hooks = *hooks;
     if (buffer->buffer == NULL)
     {
         goto fail;
     }
 
-    /* print the value */
+    /* print the value */  //打印内容
     if (!print_value(item, buffer))
     {
         goto fail;
     }
     update_offset(buffer);
 
-    /* check if reallocate is available */
+    /* check if reallocate is available */  //检查reallocate函数是否可用
     if (hooks->reallocate != NULL)
     {
         printed = (unsigned char*) hooks->reallocate(buffer->buffer, buffer->offset + 1);
@@ -1503,7 +1503,7 @@ static unsigned char *print(const cJSON * const item, cJSON_bool format, const i
         }
         buffer->buffer = NULL;
     }
-    else /* otherwise copy the JSON over to a new buffer */
+    else /* otherwise copy the JSON over to a new buffer */  //否则，将这份JSON数据复制到一块新的缓冲区中（替代reallocate）
     {
         printed = (unsigned char*) hooks->allocate(buffer->offset + 1);
         if (printed == NULL)
@@ -1511,16 +1511,16 @@ static unsigned char *print(const cJSON * const item, cJSON_bool format, const i
             goto fail;
         }
         memcpy(printed, buffer->buffer, cjson_min(buffer->length, buffer->offset + 1));
-        printed[buffer->offset] = '\0'; /* just to be sure */
+        printed[buffer->offset] = '\0'; /* just to be sure */  //再三确认
 
-        /* free the buffer */
+        /* free the buffer */  //释放缓冲区
         hooks->deallocate(buffer->buffer);
         buffer->buffer = NULL;
     }
 
     return printed;
 
-fail:
+fail:  //确保内存全部释放
     if (buffer->buffer != NULL)
     {
         hooks->deallocate(buffer->buffer);
@@ -1536,7 +1536,7 @@ fail:
     return NULL;
 }
 
-/* Render a cJSON item/entity/structure to text. */
+/* Render a cJSON item/entity/structure to text. */  //将一个 cJSON结构体渲染为文本形式
 CJSON_PUBLIC(char *) cJSON_Print(const cJSON *item)
 {
     return (char*)print(item, true, &global_hooks);
@@ -1590,40 +1590,40 @@ CJSON_PUBLIC(cJSON_bool) cJSON_PrintPreallocated(cJSON *item, char *buffer, cons
     p.buffer = (unsigned char*)buffer;
     p.length = (size_t)length;
     p.offset = 0;
-    p.noalloc = true;
+    p.noalloc = true;  //不支持分配内存（内存已固定）
     p.format = format;
-    p.hooks = global_hooks;
+    p.hooks = global_hooks;  //不支持使用自定义的钩子
 
     return print_value(item, &p);
 }
 
-/* Parser core - when encountering text, process appropriately. */
+/* Parser core - when encountering text, process appropriately. */  //解析器核心逻辑——当遇到文本内容时，进行相应的处理
 static cJSON_bool parse_value(cJSON * const item, parse_buffer * const input_buffer)
 {
     if ((input_buffer == NULL) || (input_buffer->content == NULL))
     {
-        return false; /* no input */
+        return false; /* no input */  //无输入
     }
 
-    /* parse the different types of values */
+    /* parse the different types of values */  //解析不同类型的值
     /* null */
     if (can_read(input_buffer, 4) && (strncmp((const char*)buffer_at_offset(input_buffer), "null", 4) == 0))
     {
-        item->type = cJSON_NULL;
+        item->type = cJSON_NULL;  //cJSON头文件92行#define cJSON_NULL   (1 << 2)
         input_buffer->offset += 4;
         return true;
     }
     /* false */
     if (can_read(input_buffer, 5) && (strncmp((const char*)buffer_at_offset(input_buffer), "false", 5) == 0))
     {
-        item->type = cJSON_False;
+        item->type = cJSON_False;  //cJSON头文件90行#define cJSON_False   (1 << 0)
         input_buffer->offset += 5;
         return true;
     }
     /* true */
     if (can_read(input_buffer, 4) && (strncmp((const char*)buffer_at_offset(input_buffer), "true", 4) == 0))
     {
-        item->type = cJSON_True;
+        item->type = cJSON_True;  //cJSON头文件91行#define cJSON_True   (1 << 1)
         item->valueint = 1;
         input_buffer->offset += 4;
         return true;
@@ -1635,6 +1635,7 @@ static cJSON_bool parse_value(cJSON * const item, parse_buffer * const input_buf
     }
     /* number */
     if (can_access_at_index(input_buffer, 0) && ((buffer_at_offset(input_buffer)[0] == '-') || ((buffer_at_offset(input_buffer)[0] >= '0') && (buffer_at_offset(input_buffer)[0] <= '9'))))
+    //可以访问且第一个字符是'-'或0~9的数字
     {
         return parse_number(item, input_buffer);
     }
@@ -1649,7 +1650,7 @@ static cJSON_bool parse_value(cJSON * const item, parse_buffer * const input_buf
         return parse_object(item, input_buffer);
     }
 
-    return false;
+    return false;  //没有读取到有效字符
 }
 
 /* Render a value to text. */
