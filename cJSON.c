@@ -1889,87 +1889,87 @@ static cJSON_bool print_array(const cJSON * const item, printbuffer * const outp
     return true;
 }
 
-/* Build an object from the text. */
+/* Build an object from the text. */  //从一段文本中创建出一个对应的对象
 static cJSON_bool parse_object(cJSON * const item, parse_buffer * const input_buffer)
 {
-    cJSON *head = NULL; /* linked list head */
+    cJSON *head = NULL; /* linked list head */  //这个变量的作用是保存链表的起始位置
     cJSON *current_item = NULL;
 
     if (input_buffer->depth >= CJSON_NESTING_LIMIT)
     {
-        return false; /* to deeply nested */
+        return false; /* to deeply nested */  //嵌套深度校验
     }
     input_buffer->depth++;
 
     if (cannot_access_at_index(input_buffer, 0) || (buffer_at_offset(input_buffer)[0] != '{'))
     {
-        goto fail; /* not an object */
+        goto fail; /* not an object */  //不是一个对象（使用大括号括起来）
     }
 
     input_buffer->offset++;
     buffer_skip_whitespace(input_buffer);
     if (can_access_at_index(input_buffer, 0) && (buffer_at_offset(input_buffer)[0] == '}'))
     {
-        goto success; /* empty object */
+        goto success; /* empty object */  //空项目
     }
 
-    /* check if we skipped to the end of the buffer */
+    /* check if we skipped to the end of the buffer */  //检查是否跳跃到了缓冲区的末尾（防止{后全是空字符）
     if (cannot_access_at_index(input_buffer, 0))
     {
         input_buffer->offset--;
         goto fail;
     }
 
-    /* step back to character in front of the first element */
+    /* step back to character in front of the first element */  //回退到第一个有效内容前一格
     input_buffer->offset--;
-    /* loop through the comma separated array elements */
+    /* loop through the comma separated array elements */  //遍历这个由逗号分隔的数组中的每一个元素
     do
     {
-        /* allocate next item */
+        /* allocate next item */  //为下一个节点分配内存
         cJSON *new_item = cJSON_New_Item(&(input_buffer->hooks));
         if (new_item == NULL)
         {
-            goto fail; /* allocation failure */
+            goto fail; /* allocation failure */  //内存分配失败
         }
 
-        /* attach next item to list */
-        if (head == NULL)
+        /* attach next item to list */  //向这个链表添加一个节点
+        if (head == NULL)  //链表为空
         {
-            /* start the linked list */
+            /* start the linked list */  //添加的就是第一个节点
             current_item = head = new_item;
         }
         else
         {
-            /* add to the end and advance */
-            current_item->next = new_item;
-            new_item->prev = current_item;
-            current_item = new_item;
+            /* add to the end and advance */  //在结尾添加且向后移动一位
+            current_item->next = new_item;  //当前位置的下一个节点是新建的
+            new_item->prev = current_item;  //新建节点的上一个节点是当前位置
+            current_item = new_item;  //向后移动一位
         }
 
         if (cannot_access_at_index(input_buffer, 1))
         {
-            goto fail; /* nothing comes after the comma */
+            goto fail; /* nothing comes after the comma */  //在这个逗号后面没有任何内容（，是最后一个字符）
         }
 
-        /* parse the name of the child */
-        input_buffer->offset++;
+        /* parse the name of the child */  //从原始数据中解析出子项的名称
+        input_buffer->offset++;  //跳过，
         buffer_skip_whitespace(input_buffer);
         if (!parse_string(current_item, input_buffer))
         {
-            goto fail; /* failed to parse name */
+            goto fail; /* failed to parse name */  //解析名称失败
         }
         buffer_skip_whitespace(input_buffer);
 
-        /* swap valuestring and string, because we parsed the name */
+        /* swap valuestring and string, because we parsed the name */  //把当前cJSON节点的valuestring和string字段互换，原因是我们刚解析完这个子项的名称
         current_item->string = current_item->valuestring;
         current_item->valuestring = NULL;
 
         if (cannot_access_at_index(input_buffer, 0) || (buffer_at_offset(input_buffer)[0] != ':'))
         {
-            goto fail; /* invalid object */
+            goto fail; /* invalid object */  //非法JSON对象（JSON对象的键值对必须遵循键名:值 的格式）
         }
 
-        /* parse the value */
+        /* parse the value */  //解析键值
         input_buffer->offset++;
         buffer_skip_whitespace(input_buffer);
         if (!parse_value(current_item, input_buffer))
@@ -1986,10 +1986,10 @@ static cJSON_bool parse_object(cJSON * const item, parse_buffer * const input_bu
     }
 
 success:
-    input_buffer->depth--;
+    input_buffer->depth--;  //退出对象，嵌套-1
 
     if (head != NULL) {
-        head->prev = current_item;
+        head->prev = current_item;  //链表闭环
     }
 
     item->type = cJSON_Object;
@@ -2007,21 +2007,21 @@ fail:
     return false;
 }
 
-/* Render an object to text. */
+/* Render an object to text. */  //把程序内存里的cJSON对象，变回能看懂的JSON文本字符串
 static cJSON_bool print_object(const cJSON * const item, printbuffer * const output_buffer)
 {
     unsigned char *output_pointer = NULL;
     size_t length = 0;
-    cJSON *current_item = item->child;
+    cJSON *current_item = item->child;  //链表的起始位置
 
     if (output_buffer == NULL)
     {
         return false;
     }
 
-    /* Compose the output: */
-    length = (size_t) (output_buffer->format ? 2 : 1); /* fmt: {\n */
-    output_pointer = ensure(output_buffer, length + 1);
+    /* Compose the output: */  //拼接最终的输出内容
+    length = (size_t) (output_buffer->format ? 2 : 1); /* fmt: {\n */  //标准化格式输出大括号和换行符
+    output_pointer = ensure(output_buffer, length + 1);  //为结束符预留空间
     if (output_pointer == NULL)
     {
         return false;
@@ -2037,7 +2037,7 @@ static cJSON_bool print_object(const cJSON * const item, printbuffer * const out
 
     while (current_item)
     {
-        if (output_buffer->format)
+        if (output_buffer->format)  //格式化的JSON文本
         {
             size_t i;
             output_pointer = ensure(output_buffer, output_buffer->depth);
@@ -2053,13 +2053,13 @@ static cJSON_bool print_object(const cJSON * const item, printbuffer * const out
         }
 
         /* print key */
-        if (!print_string_ptr((unsigned char*)current_item->string, output_buffer))
+        if (!print_string_ptr((unsigned char*)current_item->string, output_buffer))  //把字符写入缓冲区
         {
             return false;
         }
         update_offset(output_buffer);
 
-        length = (size_t) (output_buffer->format ? 2 : 1);
+        length = (size_t) (output_buffer->format ? 2 : 1);  //标准化读多一个\t
         output_pointer = ensure(output_buffer, length);
         if (output_pointer == NULL)
         {
@@ -2079,14 +2079,14 @@ static cJSON_bool print_object(const cJSON * const item, printbuffer * const out
         }
         update_offset(output_buffer);
 
-        /* print comma if not last */
+        /* print comma if not last */  //如果当前处理的不是最后一个键值对，就输出逗号作为分隔符
         length = ((size_t)(output_buffer->format ? 1 : 0) + (size_t)(current_item->next ? 1 : 0));
-        output_pointer = ensure(output_buffer, length + 1);
+        output_pointer = ensure(output_buffer, length + 1);  //+1考虑结束符
         if (output_pointer == NULL)
         {
             return false;
         }
-        if (current_item->next)
+        if (current_item->next)  //如果不是最后一个键值对
         {
             *output_pointer++ = ',';
         }
@@ -2111,7 +2111,7 @@ static cJSON_bool print_object(const cJSON * const item, printbuffer * const out
         size_t i;
         for (i = 0; i < (output_buffer->depth - 1); i++)
         {
-            *output_pointer++ = '\t';
+            *output_pointer++ = '\t';  //depth - 1个\t
         }
     }
     *output_pointer++ = '}';
