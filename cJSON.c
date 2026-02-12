@@ -1653,7 +1653,7 @@ static cJSON_bool parse_value(cJSON * const item, parse_buffer * const input_buf
     return false;  //没有读取到有效字符
 }
 
-/* Render a value to text. */
+/* Render a value to text. */  //将一个任意类型的值转换/格式化为文本形式
 static cJSON_bool print_value(const cJSON * const item, printbuffer * const output_buffer)
 {
     unsigned char *output = NULL;
@@ -1663,10 +1663,10 @@ static cJSON_bool print_value(const cJSON * const item, printbuffer * const outp
         return false;
     }
 
-    switch ((item->type) & 0xFF)
+    switch ((item->type) & 0xFF)  //保留item->type后8位
     {
-        case cJSON_NULL:
-            output = ensure(output_buffer, 5);
+        case cJSON_NULL:  //100
+            output = ensure(output_buffer, 5);  //包含结束符
             if (output == NULL)
             {
                 return false;
@@ -1674,7 +1674,7 @@ static cJSON_bool print_value(const cJSON * const item, printbuffer * const outp
             strcpy((char*)output, "null");
             return true;
 
-        case cJSON_False:
+        case cJSON_False:  //1
             output = ensure(output_buffer, 6);
             if (output == NULL)
             {
@@ -1683,7 +1683,7 @@ static cJSON_bool print_value(const cJSON * const item, printbuffer * const outp
             strcpy((char*)output, "false");
             return true;
 
-        case cJSON_True:
+        case cJSON_True:  //10
             output = ensure(output_buffer, 5);
             if (output == NULL)
             {
@@ -1692,10 +1692,11 @@ static cJSON_bool print_value(const cJSON * const item, printbuffer * const outp
             strcpy((char*)output, "true");
             return true;
 
-        case cJSON_Number:
+        case cJSON_Number:  //1000
             return print_number(item, output_buffer);
 
-        case cJSON_Raw:
+        case cJSON_Raw:  //10000000  
+        //原始JSON文本片段，直接保留
         {
             size_t raw_length = 0;
             if (item->valuestring == NULL)
@@ -1713,13 +1714,13 @@ static cJSON_bool print_value(const cJSON * const item, printbuffer * const outp
             return true;
         }
 
-        case cJSON_String:
+        case cJSON_String:  //10000
             return print_string(item, output_buffer);
 
-        case cJSON_Array:
+        case cJSON_Array:  //100000
             return print_array(item, output_buffer);
 
-        case cJSON_Object:
+        case cJSON_Object:  //1000000
             return print_object(item, output_buffer);
 
         default:
@@ -1728,20 +1729,20 @@ static cJSON_bool print_value(const cJSON * const item, printbuffer * const outp
 }
 
 /* Build an array from input text. */
-static cJSON_bool parse_array(cJSON * const item, parse_buffer * const input_buffer)
+static cJSON_bool parse_array(cJSON * const item, parse_buffer * const input_buffer)  //从一段输入的文本中解析并创建出一个数组数据结构
 {
-    cJSON *head = NULL; /* head of the linked list */
+    cJSON *head = NULL; /* head of the linked list */  //这个变量的作用是保存链表的起始位置
     cJSON *current_item = NULL;
 
-    if (input_buffer->depth >= CJSON_NESTING_LIMIT)
+    if (input_buffer->depth >= CJSON_NESTING_LIMIT)  //头文件137行#define CJSON_NESTING_LIMIT 1000
     {
-        return false; /* to deeply nested */
+        return false; /* to deeply nested */  //深度太大
     }
     input_buffer->depth++;
 
     if (buffer_at_offset(input_buffer)[0] != '[')
     {
-        /* not an array */
+        /* not an array */  //不是数组
         goto fail;
     }
 
@@ -1749,70 +1750,71 @@ static cJSON_bool parse_array(cJSON * const item, parse_buffer * const input_buf
     buffer_skip_whitespace(input_buffer);
     if (can_access_at_index(input_buffer, 0) && (buffer_at_offset(input_buffer)[0] == ']'))
     {
-        /* empty array */
+        /* empty array */  //空数组，例如[],[ ]
         goto success;
     }
 
-    /* check if we skipped to the end of the buffer */
+    /* check if we skipped to the end of the buffer */  //检查我们是否跳跃到了缓冲区的结尾，防止[后全是空白字符
     if (cannot_access_at_index(input_buffer, 0))
     {
         input_buffer->offset--;
         goto fail;
     }
 
-    /* step back to character in front of the first element */
+    /* step back to character in front of the first element */  //将字符指针回退到第一个元素前面的那个字符位置
     input_buffer->offset--;
-    /* loop through the comma separated array elements */
+    /* loop through the comma separated array elements */  //循环遍历以逗号分隔的数组元素
     do
     {
-        /* allocate next item */
+        /* allocate next item */  //为下一个节点分配内存
         cJSON *new_item = cJSON_New_Item(&(input_buffer->hooks));
         if (new_item == NULL)
         {
-            goto fail; /* allocation failure */
+            goto fail; /* allocation failure */  //内存分配失败
         }
 
-        /* attach next item to list */
-        if (head == NULL)
+        /* attach next item to list */  //将下一个项（节点）附加到链表中
+        if (head == NULL)  //链表为空
         {
-            /* start the linked list */
+            /* start the linked list */  //添加到起始位置
             current_item = head = new_item;
         }
         else
         {
-            /* add to the end and advance */
+            /* add to the end and advance */  //添加到末尾并向后移动一位
             current_item->next = new_item;
             new_item->prev = current_item;
-            current_item = new_item;
+            current_item = new_item;  //向后移动一位
         }
 
-        /* parse next value */
+        /* parse next value */  //解析下一个JSON值
         input_buffer->offset++;
-        buffer_skip_whitespace(input_buffer);
+        buffer_skip_whitespace(input_buffer);  //跳过元素前的空白符
         if (!parse_value(current_item, input_buffer))
         {
-            goto fail; /* failed to parse value */
+            goto fail; /* failed to parse value */  //文本处理失败
         }
-        buffer_skip_whitespace(input_buffer);
+        buffer_skip_whitespace(input_buffer);  //跳过元素后的空白符
     }
     while (can_access_at_index(input_buffer, 0) && (buffer_at_offset(input_buffer)[0] == ','));
 
     if (cannot_access_at_index(input_buffer, 0) || buffer_at_offset(input_buffer)[0] != ']')
+    //校验数组是否以]闭合
     {
         goto fail; /* expected end of array */
     }
 
 success:
-    input_buffer->depth--;
+    input_buffer->depth--;  //退出数组，嵌套深度-1
 
-    if (head != NULL) {
+    if (head != NULL) {  //双向链表闭环（头节点prev指向尾节点）
         head->prev = current_item;
     }
 
     item->type = cJSON_Array;
     item->child = head;
 
-    input_buffer->offset++;
+    input_buffer->offset++;  //跳过]，指针移到数组末尾
 
     return true;
 
@@ -1825,7 +1827,7 @@ fail:
     return false;
 }
 
-/* Render an array to text */
+/* Render an array to text */  //将内存中的cJSON数组节点序列化为符合JSON语法的文本字符串（parse_array的逆向操作）
 static cJSON_bool print_array(const cJSON * const item, printbuffer * const output_buffer)
 {
     unsigned char *output_pointer = NULL;
@@ -1837,8 +1839,8 @@ static cJSON_bool print_array(const cJSON * const item, printbuffer * const outp
         return false;
     }
 
-    /* Compose the output array. */
-    /* opening square bracket */
+    /* Compose the output array. */  //拼接构建最终要输出的 JSON 数组文本
+    /* opening square bracket */  //输出数组开头的左方括号
     output_pointer = ensure(output_buffer, 1);
     if (output_pointer == NULL)
     {
@@ -1858,7 +1860,7 @@ static cJSON_bool print_array(const cJSON * const item, printbuffer * const outp
         update_offset(output_buffer);
         if (current_element->next)
         {
-            length = (size_t) (output_buffer->format ? 2 : 1);
+            length = (size_t) (output_buffer->format ? 2 : 1);  //要求标准化输出要多输出一个空格
             output_pointer = ensure(output_buffer, length + 1);
             if (output_pointer == NULL)
             {
@@ -1882,7 +1884,7 @@ static cJSON_bool print_array(const cJSON * const item, printbuffer * const outp
     }
     *output_pointer++ = ']';
     *output_pointer = '\0';
-    output_buffer->depth--;
+    output_buffer->depth--;  //退出数组，嵌套深度-1
 
     return true;
 }
