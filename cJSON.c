@@ -2121,7 +2121,7 @@ static cJSON_bool print_object(const cJSON * const item, printbuffer * const out
     return true;
 }
 
-/* Get Array size/item / object item. */
+/* Get Array size/item / object item. */  //获取数组的长度、数组的元素，或对象的属性值
 CJSON_PUBLIC(int) cJSON_GetArraySize(const cJSON *array)
 {
     cJSON *child = NULL;
@@ -2141,11 +2141,11 @@ CJSON_PUBLIC(int) cJSON_GetArraySize(const cJSON *array)
     }
 
     /* FIXME: Can overflow here. Cannot be fixed without breaking the API */
-
+    //待修复：此处会发生溢出问题，但如果要修复这个问题，就必须破坏现有的 API（应用程序接口），因此暂时无法修复
     return (int)size;
 }
 
-static cJSON* get_array_item(const cJSON *array, size_t index)
+static cJSON* get_array_item(const cJSON *array, size_t index)  //获取cJSON数组中对应位置的元素指针
 {
     cJSON *current_child = NULL;
 
@@ -2174,7 +2174,8 @@ CJSON_PUBLIC(cJSON *) cJSON_GetArrayItem(const cJSON *array, int index)
     return get_array_item(array, (size_t)index);
 }
 
-static cJSON *get_object_item(const cJSON * const object, const char * const name, const cJSON_bool case_sensitive)
+static cJSON *get_object_item(const cJSON * const object, const char * const name, const cJSON_bool case_sensitive)  //case_sensitive表示是否区分大小写
+//遍历cJSON元素链表，分情况查找string字段等于name的元素
 {
     cJSON *current_element = NULL;
 
@@ -2184,14 +2185,14 @@ static cJSON *get_object_item(const cJSON * const object, const char * const nam
     }
 
     current_element = object->child;
-    if (case_sensitive)
+    if (case_sensitive)  //遍历cJSON元素链表，区分大小写的查找string字段等于name的元素
     {
         while ((current_element != NULL) && (current_element->string != NULL) && (strcmp(name, current_element->string) != 0))
         {
             current_element = current_element->next;
         }
     }
-    else
+    else  //遍历cJSON元素链表，不区分大小写的查找string字段等于name的元素
     {
         while ((current_element != NULL) && (case_insensitive_strcmp((const unsigned char*)name, (const unsigned char*)(current_element->string)) != 0))
         {
@@ -2221,14 +2222,14 @@ CJSON_PUBLIC(cJSON_bool) cJSON_HasObjectItem(const cJSON *object, const char *st
     return cJSON_GetObjectItem(object, string) ? 1 : 0;
 }
 
-/* Utility for array list handling. */
+/* Utility for array list handling. */  //用于数组列表处理的工具函数/模块
 static void suffix_object(cJSON *prev, cJSON *item)
 {
     prev->next = item;
     item->prev = prev;
 }
 
-/* Utility for handling references. */
+/* Utility for handling references. */  //处理引用/指针相关操作的工具函数/模块
 static cJSON *create_reference(const cJSON *item, const internal_hooks * const hooks)
 {
     cJSON *reference = NULL;
@@ -2245,7 +2246,7 @@ static cJSON *create_reference(const cJSON *item, const internal_hooks * const h
 
     memcpy(reference, item, sizeof(cJSON));
     reference->string = NULL;
-    reference->type |= cJSON_IsReference;
+    reference->type |= cJSON_IsReference;  //cJSON_IsReference=256，取最后8位
     reference->next = reference->prev = NULL;
     return reference;
 }
