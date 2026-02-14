@@ -2251,7 +2251,7 @@ static cJSON *create_reference(const cJSON *item, const internal_hooks * const h
     return reference;
 }
 
-static cJSON_bool add_item_to_array(cJSON *array, cJSON *item)
+static cJSON_bool add_item_to_array(cJSON *array, cJSON *item)  //为数组添加节点
 {
     cJSON *child = NULL;
 
@@ -2262,21 +2262,21 @@ static cJSON_bool add_item_to_array(cJSON *array, cJSON *item)
 
     child = array->child;
     /*
-     * To find the last item in array quickly, we use prev in array
+     * To find the last item in array quickly, we use prev in array  //为了找到数组中的最后一个节点，我们使用数组中的prev指针
      */
     if (child == NULL)
     {
-        /* list is empty, start new one */
+        /* list is empty, start new one */  //链表为空，开启一个新链表
         array->child = item;
         item->prev = item;
         item->next = NULL;
     }
     else
     {
-        /* append to the end */
+        /* append to the end */  //末尾添加
         if (child->prev)
         {
-            suffix_object(child->prev, item);
+            suffix_object(child->prev, item);  //双向链表，child->prev即指向最后一个元素
             array->child->prev = item;
         }
     }
@@ -2284,29 +2284,38 @@ static cJSON_bool add_item_to_array(cJSON *array, cJSON *item)
     return true;
 }
 
-/* Add item to array/object. */
+/* Add item to array/object. */  //添加节点到数组/项目
 CJSON_PUBLIC(cJSON_bool) cJSON_AddItemToArray(cJSON *array, cJSON *item)
 {
     return add_item_to_array(array, item);
 }
 
 #if defined(__clang__) || (defined(__GNUC__)  && ((__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ > 5))))
+//仅在Clang编译器，或GCC 4.6及以上版本中
+/* 如果定义了__clang__或条件A
+ * 条件A：定义了__GNUC__并且满足条件B
+ * 条件B：__GNUC__ > 4或条件C
+ * 条件C：__GNUC__ == 4)且__GNUC_MINOR__ > 5 */
     #pragma GCC diagnostic push
+//保存当前的编译器警告配置
 #endif
-#ifdef __GNUC__
+#ifdef __GNUC__  //仅对GCC（包括兼容 GCC 语法的 Clang）生效
 #pragma GCC diagnostic ignored "-Wcast-qual"
+//忽略-Wcast-qual警告（当代码中移除指针的const/volatile限定符时触发）
 #endif
-/* helper function to cast away const */
+/* helper function to cast away const */  //这是移除const限定符的辅助函数
 static void* cast_away_const(const void* string)
 {
     return (void*)string;
 }
 #if defined(__clang__) || (defined(__GNUC__)  && ((__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ > 5))))
     #pragma GCC diagnostic pop
+//恢复警告设置
 #endif
 
 
 static cJSON_bool add_item_to_object(cJSON * const object, const char * const string, cJSON * const item, const internal_hooks * const hooks, const cJSON_bool constant_key)
+//为项目添加节点
 {
     char *new_key = NULL;
     int new_type = cJSON_Invalid;
@@ -2316,12 +2325,13 @@ static cJSON_bool add_item_to_object(cJSON * const object, const char * const st
         return false;
     }
 
-    if (constant_key)
+    if (constant_key)  //constant_key=true：键名是常量字符串，无需拷贝，直接复用原指针
     {
         new_key = (char*)cast_away_const(string);
-        new_type = item->type | cJSON_StringIsConst;
+        new_type = item->type | cJSON_StringIsConst;  //#define cJSON_StringIsConst 512
+        //将第9位设置为1,后续cJSON清理内存时不会释放这个键名（避免释放只读内存导致崩溃）
     }
-    else
+    else  //键名不是常量，必须拷贝一份新的字符串
     {
         new_key = (char*)cJSON_strdup((const unsigned char*)string, hooks);
         if (new_key == NULL)
@@ -2330,11 +2340,12 @@ static cJSON_bool add_item_to_object(cJSON * const object, const char * const st
         }
 
         new_type = item->type & ~cJSON_StringIsConst;
+        //将第9位设置为0
     }
 
-    if (!(item->type & cJSON_StringIsConst) && (item->string != NULL))
+    if (!(item->type & cJSON_StringIsConst) && (item->string != NULL))  //constant_key为假且item->string非空
     {
-        hooks->deallocate(item->string);
+        hooks->deallocate(item->string);  //不是常量释放旧的键名字符串
     }
 
     item->string = new_key;
@@ -2356,7 +2367,7 @@ CJSON_PUBLIC(cJSON_bool) cJSON_AddItemToObjectCS(cJSON *object, const char *stri
 
 CJSON_PUBLIC(cJSON_bool) cJSON_AddItemReferenceToArray(cJSON *array, cJSON *item)
 {
-    if (array == NULL)
+    if (array == NULL)  //若数组为空不可创造
     {
         return false;
     }
@@ -2368,13 +2379,14 @@ CJSON_PUBLIC(cJSON_bool) cJSON_AddItemReferenceToObject(cJSON *object, const cha
 {
     if ((object == NULL) || (string == NULL))
     {
-        return false;
+        return false;  //传入项目或键名不可为空
     }
 
     return add_item_to_object(object, string, create_reference(item, &global_hooks), &global_hooks, false);
 }
 
 CJSON_PUBLIC(cJSON*) cJSON_AddNullToObject(cJSON * const object, const char * const name)
+//向指定的JSON对象中添加一个值为null的键值对
 {
     cJSON *null = cJSON_CreateNull();
     if (add_item_to_object(object, name, null, &global_hooks, false))
@@ -2382,7 +2394,7 @@ CJSON_PUBLIC(cJSON*) cJSON_AddNullToObject(cJSON * const object, const char * co
         return null;
     }
 
-    cJSON_Delete(null);
+    cJSON_Delete(null);  //失败清空分配指针的内存
     return NULL;
 }
 
