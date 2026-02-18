@@ -2398,7 +2398,7 @@ CJSON_PUBLIC(cJSON*) cJSON_AddNullToObject(cJSON * const object, const char * co
     return NULL;
 }
 
-CJSON_PUBLIC(cJSON*) cJSON_AddTrueToObject(cJSON * const object, const char * const name)
+CJSON_PUBLIC(cJSON*) cJSON_AddTrueToObject(cJSON * const object, const char * const name)  //向指定的JSON对象中添加一个值为true的键值对
 {
     cJSON *true_item = cJSON_CreateTrue();
     if (add_item_to_object(object, name, true_item, &global_hooks, false))
@@ -2410,7 +2410,7 @@ CJSON_PUBLIC(cJSON*) cJSON_AddTrueToObject(cJSON * const object, const char * co
     return NULL;
 }
 
-CJSON_PUBLIC(cJSON*) cJSON_AddFalseToObject(cJSON * const object, const char * const name)
+CJSON_PUBLIC(cJSON*) cJSON_AddFalseToObject(cJSON * const object, const char * const name)  //向指定的JSON对象中添加一个值为false的键值对
 {
     cJSON *false_item = cJSON_CreateFalse();
     if (add_item_to_object(object, name, false_item, &global_hooks, false))
@@ -2423,6 +2423,7 @@ CJSON_PUBLIC(cJSON*) cJSON_AddFalseToObject(cJSON * const object, const char * c
 }
 
 CJSON_PUBLIC(cJSON*) cJSON_AddBoolToObject(cJSON * const object, const char * const name, const cJSON_bool boolean)
+//向指定的JSON对象中添加一个键值为bool的键值对
 {
     cJSON *bool_item = cJSON_CreateBool(boolean);
     if (add_item_to_object(object, name, bool_item, &global_hooks, false))
@@ -2435,6 +2436,7 @@ CJSON_PUBLIC(cJSON*) cJSON_AddBoolToObject(cJSON * const object, const char * co
 }
 
 CJSON_PUBLIC(cJSON*) cJSON_AddNumberToObject(cJSON * const object, const char * const name, const double number)
+//向指定的JSON对象中添加一个键值为number的键值对
 {
     cJSON *number_item = cJSON_CreateNumber(number);
     if (add_item_to_object(object, name, number_item, &global_hooks, false))
@@ -2447,6 +2449,7 @@ CJSON_PUBLIC(cJSON*) cJSON_AddNumberToObject(cJSON * const object, const char * 
 }
 
 CJSON_PUBLIC(cJSON*) cJSON_AddStringToObject(cJSON * const object, const char * const name, const char * const string)
+//向指定的JSON对象中添加一个键值为字符串的键值对
 {
     cJSON *string_item = cJSON_CreateString(string);
     if (add_item_to_object(object, name, string_item, &global_hooks, false))
@@ -2459,6 +2462,7 @@ CJSON_PUBLIC(cJSON*) cJSON_AddStringToObject(cJSON * const object, const char * 
 }
 
 CJSON_PUBLIC(cJSON*) cJSON_AddRawToObject(cJSON * const object, const char * const name, const char * const raw)
+//向指定的JSON对象中添加一个键值为raw的键值对
 {
     cJSON *raw_item = cJSON_CreateRaw(raw);
     if (add_item_to_object(object, name, raw_item, &global_hooks, false))
@@ -2471,6 +2475,7 @@ CJSON_PUBLIC(cJSON*) cJSON_AddRawToObject(cJSON * const object, const char * con
 }
 
 CJSON_PUBLIC(cJSON*) cJSON_AddObjectToObject(cJSON * const object, const char * const name)
+//向指定的JSON对象中添加一个键值为项目的键值对（套娃）
 {
     cJSON *object_item = cJSON_CreateObject();
     if (add_item_to_object(object, name, object_item, &global_hooks, false))
@@ -2483,6 +2488,8 @@ CJSON_PUBLIC(cJSON*) cJSON_AddObjectToObject(cJSON * const object, const char * 
 }
 
 CJSON_PUBLIC(cJSON*) cJSON_AddArrayToObject(cJSON * const object, const char * const name)
+//向指定的JSON对象中添加一个键值为数组的键值对
+
 {
     cJSON *array = cJSON_CreateArray();
     if (add_item_to_object(object, name, array, &global_hooks, false))
@@ -2494,36 +2501,36 @@ CJSON_PUBLIC(cJSON*) cJSON_AddArrayToObject(cJSON * const object, const char * c
     return NULL;
 }
 
-CJSON_PUBLIC(cJSON *) cJSON_DetachItemViaPointer(cJSON *parent, cJSON * const item)
+CJSON_PUBLIC(cJSON *) cJSON_DetachItemViaPointer(cJSON *parent, cJSON * const item)  //通过指针精准移除指定的子节点（不删除）
 {
-    if ((parent == NULL) || (item == NULL) || (item != parent->child && item->prev == NULL))
+    if ((parent == NULL) || (item == NULL) || (item != parent->child && item->prev == NULL))  //最后一个条件判断item是否在parent的子链表中
     {
         return NULL;
     }
 
     if (item != parent->child)
     {
-        /* not the first element */
-        item->prev->next = item->next;
+        /* not the first element */  //不是第一个节点
+        item->prev->next = item->next;  //此节点的前一个节点跳过此节点指向下一个节点
     }
     if (item->next != NULL)
     {
-        /* not the last element */
-        item->next->prev = item->prev;
+        /* not the last element */  //不是最后一个节点
+        item->next->prev = item->prev;  //此节点的后一个节点跳过此节点指向上一个节点
     }
 
     if (item == parent->child)
     {
-        /* first element */
+        /* first element */  //是第一个节点
         parent->child = item->next;
     }
     else if (item->next == NULL)
     {
-        /* last element */
+        /* last element */  //是最后一个节点
         parent->child->prev = item->prev;
     }
 
-    /* make sure the detached item doesn't point anywhere anymore */
+    /* make sure the detached item doesn't point anywhere anymore */  //清空被剥离节点的前后指针，避免野指针
     item->prev = NULL;
     item->next = NULL;
 
@@ -2569,7 +2576,7 @@ CJSON_PUBLIC(void) cJSON_DeleteItemFromObjectCaseSensitive(cJSON *object, const 
     cJSON_Delete(cJSON_DetachItemFromObjectCaseSensitive(object, string));
 }
 
-/* Replace array/object items with new ones. */
+/* Replace array/object items with new ones. */  //替换数组/项目中的元素/节点
 CJSON_PUBLIC(cJSON_bool) cJSON_InsertItemInArray(cJSON *array, int which, cJSON *newitem)
 {
     cJSON *after_inserted = NULL;
@@ -2580,19 +2587,19 @@ CJSON_PUBLIC(cJSON_bool) cJSON_InsertItemInArray(cJSON *array, int which, cJSON 
     }
 
     after_inserted = get_array_item(array, (size_t)which);
-    if (after_inserted == NULL)
+    if (after_inserted == NULL)  //指定位置元素为空（超过数组范围/原数组为空）
     {
-        return add_item_to_array(array, newitem);
+        return add_item_to_array(array, newitem);  //超过数组范围/原数组为空默认添加到结尾
     }
 
     if (after_inserted != array->child && after_inserted->prev == NULL) {
-        /* return false if after_inserted is a corrupted array item */
+        /* return false if after_inserted is a corrupted array item */  //不是第一个元素且上一个元素为空说明内存损坏
         return false;
     }
 
     newitem->next = after_inserted;
     newitem->prev = after_inserted->prev;
-    after_inserted->prev = newitem;
+    after_inserted->prev = newitem;  //把新元素添加到指定元素和它上一个元素之间
     if (after_inserted == array->child)
     {
         array->child = newitem;
@@ -2603,29 +2610,29 @@ CJSON_PUBLIC(cJSON_bool) cJSON_InsertItemInArray(cJSON *array, int which, cJSON 
     }
     return true;
 }
-
+      
 CJSON_PUBLIC(cJSON_bool) cJSON_ReplaceItemViaPointer(cJSON * const parent, cJSON * const item, cJSON * replacement)
 {
     if ((parent == NULL) || (parent->child == NULL) || (replacement == NULL) || (item == NULL))
     {
         return false;
     }
-
+  
     if (replacement == item)
     {
-        return true;
+        return true;  //要替换的元素与原元素相同（不需要操作）
     }
 
     replacement->next = item->next;
     replacement->prev = item->prev;
 
-    if (replacement->next != NULL)
+    if (replacement->next != NULL)  //不是最后一个元素（最后一个元素next为NULL）
     {
         replacement->next->prev = replacement;
     }
-    if (parent->child == item)
+    if (parent->child == item)  //第一个元素
     {
-        if (parent->child->prev == parent->child)
+        if (parent->child->prev == parent->child)  //只有一个元素
         {
             replacement->prev = replacement;
         }
@@ -2636,6 +2643,7 @@ CJSON_PUBLIC(cJSON_bool) cJSON_ReplaceItemViaPointer(cJSON * const parent, cJSON
          * To find the last item in array quickly, we use prev in array.
          * We can't modify the last item's next pointer where this item was the parent's child
          */
+        //为了快速找到最后一个节点，我们使用数组中的prev，当最后一个元素同时是父节点的child（即数组只有一个元素）时，我们不能修改这个最后一个元素的next指针
         if (replacement->prev != NULL)
         {
             replacement->prev->next = replacement;
