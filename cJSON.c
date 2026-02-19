@@ -2673,13 +2673,14 @@ CJSON_PUBLIC(cJSON_bool) cJSON_ReplaceItemInArray(cJSON *array, int which, cJSON
 
 static cJSON_bool replace_item_in_object(cJSON *object, const char *string, cJSON *replacement, cJSON_bool case_sensitive)
 {
-    if ((replacement == NULL) || (string == NULL))
+    if ((replacement == NULL) || (string == NULL))  //要替换的节点为空或键名为空
     {
         return false;
     }
 
-    /* replace the name in the replacement */
+    /* replace the name in the replacement */  //替换replacement中的键名
     if (!(replacement->type & cJSON_StringIsConst) && (replacement->string != NULL))
+    //如果replacement的string不是只读且它的键名非空
     {
         cJSON_free(replacement->string);
     }
@@ -2689,7 +2690,7 @@ static cJSON_bool replace_item_in_object(cJSON *object, const char *string, cJSO
         return false;
     }
 
-    replacement->type &= ~cJSON_StringIsConst;
+    replacement->type &= ~cJSON_StringIsConst;  //保留最后八位
 
     return cJSON_ReplaceItemViaPointer(object, get_object_item(object, string, case_sensitive), replacement);
 }
