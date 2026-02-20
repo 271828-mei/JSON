@@ -3041,19 +3041,19 @@ cJSON * cJSON_Duplicate_rec(const cJSON *item, size_t depth, cJSON_bool recurse)
     cJSON *next = NULL;
     cJSON *newchild = NULL;
 
-    /* Bail on bad ptr */
+    /* Bail on bad ptr */  //如果检测到无效/坏指针，就立即退出
     if (!item)
     {
         goto fail;
     }
-    /* Create new item */
+    /* Create new item */  //创造新节点
     newitem = cJSON_New_Item(&global_hooks);
     if (!newitem)
     {
         goto fail;
     }
-    /* Copy over all vars */
-    newitem->type = item->type & (~cJSON_IsReference);
+    /* Copy over all vars */  //将所有变量完整地复制到目标位置
+    newitem->type = item->type & (~cJSON_IsReference);  //保留后8位
     newitem->valueint = item->valueint;
     newitem->valuedouble = item->valuedouble;
     if (item->valuestring)
@@ -3067,24 +3067,26 @@ cJSON * cJSON_Duplicate_rec(const cJSON *item, size_t depth, cJSON_bool recurse)
     if (item->string)
     {
         newitem->string = (item->type&cJSON_StringIsConst) ? item->string : (char*)cJSON_strdup((unsigned char*)item->string, &global_hooks);
+        //如果只读直接赋值，如果不是则拷贝一份
         if (!newitem->string)
         {
             goto fail;
         }
     }
-    /* If non-recursive, then we're done! */
+    /* If non-recursive, then we're done! */  //如果当前执行的是非递归模式，那么这个逻辑流程就到此结束
     if (!recurse)
     {
         return newitem;
     }
-    /* Walk the ->next chain for the child. */
+    /* Walk the ->next chain for the child. */  //针对这个子节点，遍历它通过next指针串联起来的整个链表链
     child = item->child;
     while (child != NULL)
     {
         if(depth >= CJSON_CIRCULAR_LIMIT) {
             goto fail;
-        }
+        }  //嵌套深度超出限制
         newchild = cJSON_Duplicate_rec(child, depth + 1, true); /* Duplicate (with recurse) each item in the ->next chain */
+        //以递归的方式，复制next链表链中的每一个节点
         if (!newchild)
         {
             goto fail;
@@ -3092,13 +3094,14 @@ cJSON * cJSON_Duplicate_rec(const cJSON *item, size_t depth, cJSON_bool recurse)
         if (next != NULL)
         {
             /* If newitem->child already set, then crosswire ->prev and ->next and move on */
+            //如果新节点newitem的子节点已经存在，那么就重新调整该节点在链表中的prev和next指针，之后直接继续处理下一个节点
             next->next = newchild;
             newchild->prev = next;
             next = newchild;
         }
         else
         {
-            /* Set newitem->child and move to it */
+            /* Set newitem->child and move to it */  //设置newitem的子节点并移动
             newitem->child = newchild;
             next = newchild;
         }
@@ -3106,7 +3109,7 @@ cJSON * cJSON_Duplicate_rec(const cJSON *item, size_t depth, cJSON_bool recurse)
     }
     if (newitem && newitem->child)
     {
-        newitem->child->prev = newchild;
+        newitem->child->prev = newchild;  //应该把newchild改为newitem
     }
 
     return newitem;
