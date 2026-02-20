@@ -2705,7 +2705,7 @@ CJSON_PUBLIC(cJSON_bool) cJSON_ReplaceItemInObjectCaseSensitive(cJSON *object, c
     return replace_item_in_object(object, string, newitem, true);
 }
 
-/* Create basic types: */
+/* Create basic types: */  //创造基础类型
 CJSON_PUBLIC(cJSON *) cJSON_CreateNull(void)
 {
     cJSON *item = cJSON_New_Item(&global_hooks);
@@ -2758,7 +2758,7 @@ CJSON_PUBLIC(cJSON *) cJSON_CreateNumber(double num)
         item->type = cJSON_Number;
         item->valuedouble = num;
 
-        /* use saturation in case of overflow */
+        /* use saturation in case of overflow */  //当代码中的数值超出变量能存储的范围时，让数值固定在该类型的最大值/最小值
         if (num >= INT_MAX)
         {
             item->valueint = INT_MAX;
@@ -2865,7 +2865,7 @@ CJSON_PUBLIC(cJSON *) cJSON_CreateObject(void)
     return item;
 }
 
-/* Create Arrays: */
+/* Create Arrays: */  //创造多个数组元素
 CJSON_PUBLIC(cJSON *) cJSON_CreateIntArray(const int *numbers, int count)
 {
     size_t i = 0;
@@ -2890,11 +2890,11 @@ CJSON_PUBLIC(cJSON *) cJSON_CreateIntArray(const int *numbers, int count)
         }
         if(!i)
         {
-            a->child = n;
+            a->child = n;  //i==0时numbers[0]是首元素
         }
         else
         {
-            suffix_object(p, n);
+            suffix_object(p, n);  //将n作为p的下一个元素
         }
         p = n;
     }
@@ -3026,7 +3026,7 @@ CJSON_PUBLIC(cJSON *) cJSON_CreateStringArray(const char *const *strings, int co
     return a;
 }
 
-/* Duplication */
+/* Duplication */  //先标注这个函数（后续定义）
 cJSON * cJSON_Duplicate_rec(const cJSON *item, size_t depth, cJSON_bool recurse);
 
 CJSON_PUBLIC(cJSON *) cJSON_Duplicate(const cJSON *item, cJSON_bool recurse)
