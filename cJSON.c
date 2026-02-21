@@ -3091,25 +3091,25 @@ cJSON * cJSON_Duplicate_rec(const cJSON *item, size_t depth, cJSON_bool recurse)
         {
             goto fail;
         }
-        if (next != NULL)
+        if (next != NULL)  //不是第一个节点
         {
             /* If newitem->child already set, then crosswire ->prev and ->next and move on */
-            //如果新节点newitem的子节点已经存在，那么就重新调整该节点在链表中的prev和next指针，之后直接继续处理下一个节点
-            next->next = newchild;
+            //如果新节点newitem的子节点已经存在，那么就调整该节点在链表中的prev和next指针，之后直接继续处理下一个节点
+            next->next = newchild;  //next指上一个节点，newchild指现在的节点
             newchild->prev = next;
-            next = newchild;
+            next = newchild;  //移动
         }
-        else
+        else  //该层深度下的第一个节点（子节点）
         {
             /* Set newitem->child and move to it */  //设置newitem的子节点并移动
             newitem->child = newchild;
             next = newchild;
         }
-        child = child->next;
+        child = child->next;  //移动
     }
     if (newitem && newitem->child)
     {
-        newitem->child->prev = newchild;  //应该把newchild改为newitem
+        newitem->child->prev = newchild;  //newitem->child表示该层深度下的第一个节点，newchild经过循环指向该层深度下的最后一个节点
     }
 
     return newitem;
