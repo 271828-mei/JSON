@@ -3325,9 +3325,9 @@ CJSON_PUBLIC(cJSON_bool) cJSON_Compare(const cJSON * const a, const cJSON * cons
     if ((a == NULL) || (b == NULL) || ((a->type & 0xFF) != (b->type & 0xFF)))
     {
         return false;
-    }
+    }  //a,b中有一个为NULL或a,b类型的后8位不一样，返回false
 
-    /* check if type is valid */
+    /* check if type is valid */  //检查type是否合法
     switch (a->type & 0xFF)
     {
         case cJSON_False:
@@ -3344,7 +3344,7 @@ CJSON_PUBLIC(cJSON_bool) cJSON_Compare(const cJSON * const a, const cJSON * cons
             return false;
     }
 
-    /* identical objects are equal */
+    /* identical objects are equal */  //同一个对象（地址相同）
     if (a == b)
     {
         return true;
@@ -3352,7 +3352,7 @@ CJSON_PUBLIC(cJSON_bool) cJSON_Compare(const cJSON * const a, const cJSON * cons
 
     switch (a->type & 0xFF)
     {
-        /* in these cases and equal type is enough */
+        /* in these cases and equal type is enough */  //这3种情况下类型相同足够了
         case cJSON_False:
         case cJSON_True:
         case cJSON_NULL:
@@ -3385,7 +3385,7 @@ CJSON_PUBLIC(cJSON_bool) cJSON_Compare(const cJSON * const a, const cJSON * cons
 
             for (; (a_element != NULL) && (b_element != NULL);)
             {
-                if (!cJSON_Compare(a_element, b_element, case_sensitive))
+                if (!cJSON_Compare(a_element, b_element, case_sensitive))  //递归调用，依次比较
                 {
                     return false;
                 }
@@ -3394,7 +3394,7 @@ CJSON_PUBLIC(cJSON_bool) cJSON_Compare(const cJSON * const a, const cJSON * cons
                 b_element = b_element->next;
             }
 
-            /* one of the arrays is longer than the other */
+            /* one of the arrays is longer than the other */  //其中一个数组更长（或有更多的子节点分支）
             if (a_element != b_element) {
                 return false;
             }
@@ -3407,12 +3407,16 @@ CJSON_PUBLIC(cJSON_bool) cJSON_Compare(const cJSON * const a, const cJSON * cons
             cJSON *a_element = NULL;
             cJSON *b_element = NULL;
             cJSON_ArrayForEach(a_element, a)
+            /* 头文件296行
+             * #define cJSON_ArrayForEach(element, array) for(element = (array != NULL) ? (array)->child : NULL; element != NULL; element = element->next)
+             */
+            //等价于 for(a_element = ((a!=NULL) ? a->child : NULL); a_element!=NULL ;a_element = a_element->next)
             {
-                /* TODO This has O(n^2) runtime, which is horrible! */
-                b_element = get_object_item(b, a_element->string, case_sensitive);
+                /* TODO This has O(n^2) runtime, which is horrible! */  //为达到目的是O（n^2）的时间复杂度（糟糕）
+                b_element = get_object_item(b, a_element->string, case_sensitive);  //在b项目中寻找键名为a_element->string的节点
                 if (b_element == NULL)
                 {
-                    return false;
+                    return false;  //找不到
                 }
 
                 if (!cJSON_Compare(a_element, b_element, case_sensitive))
@@ -3423,6 +3427,8 @@ CJSON_PUBLIC(cJSON_bool) cJSON_Compare(const cJSON * const a, const cJSON * cons
 
             /* doing this twice, once on a and b to prevent true comparison if a subset of b
              * TODO: Do this the proper way, this is just a fix for now */
+            /* 为了避免因a是b的子集而导致错误的相等判断，需要对a和b双向各做一次比较
+             * 同时备注这只是临时方案，后续需要用更规范的方式重构 */
             cJSON_ArrayForEach(b_element, b)
             {
                 a_element = get_object_item(a, b_element->string, case_sensitive);
