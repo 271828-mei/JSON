@@ -3123,20 +3123,20 @@ fail:
     return NULL;
 }
 
-static void skip_oneline_comment(char **input)
+static void skip_oneline_comment(char **input)  //跳过单行注释（// 开头）
 {
-    *input += static_strlen("//");
+    *input += static_strlen("//");  //跳过"//"这两个字符，指针向后移动2位
 
     for (; (*input)[0] != '\0'; ++(*input))
     {
-        if ((*input)[0] == '\n') {
+        if ((*input)[0] == '\n') {  //单行注释以换行符结束
             *input += static_strlen("\n");
             return;
         }
     }
 }
 
-static void skip_multiline_comment(char **input)
+static void skip_multiline_comment(char **input)  //跳过多行注释
 {
     *input += static_strlen("/*");
 
@@ -3163,7 +3163,7 @@ static void minify_string(char **input, char **output) {
             (*output)[0] = '\"';
             *input += static_strlen("\"");
             *output += static_strlen("\"");
-            return;
+            return;  //遇到后引号结束
         } else if (((*input)[0] == '\\') && ((*input)[1] == '\"')) {
             (*output)[1] = (*input)[1];
             *input += static_strlen("\"");
@@ -3181,42 +3181,42 @@ CJSON_PUBLIC(void) cJSON_Minify(char *json)
         return;
     }
 
-    while (json[0] != '\0')
+    while (json[0] != '\0')  //确保不是空字符
     {
         switch (json[0])
         {
             case ' ':
             case '\t':
-            case '\r':
+            case '\r':  //回车
             case '\n':
-                json++;
+                json++;  //跳过空白字符
                 break;
 
             case '/':
                 if (json[1] == '/')
                 {
-                    skip_oneline_comment(&json);
+                    skip_oneline_comment(&json);  //跳过单行注释
                 }
                 else if (json[1] == '*')
                 {
-                    skip_multiline_comment(&json);
+                    skip_multiline_comment(&json);  //跳过多行注释
                 } else {
                     json++;
                 }
                 break;
 
             case '\"':
-                minify_string(&json, (char**)&into);
+                minify_string(&json, (char**)&into);  //复制双引号包裹的字符串（包括双引号）
                 break;
 
-            default:
+            default:  //其他情况直接复制
                 into[0] = json[0];
                 json++;
                 into++;
         }
     }
 
-    /* and null-terminate. */
+    /* and null-terminate. */  //添加结束符
     *into = '\0';
 }
 
@@ -3227,7 +3227,7 @@ CJSON_PUBLIC(cJSON_bool) cJSON_IsInvalid(const cJSON * const item)
         return false;
     }
 
-    return (item->type & 0xFF) == cJSON_Invalid;
+    return (item->type & 0xFF) == cJSON_Invalid;  //item->type保留后8位，#define cJSON_Invalid (0)
 }
 
 CJSON_PUBLIC(cJSON_bool) cJSON_IsFalse(const cJSON * const item)
