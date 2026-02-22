@@ -3541,3 +3541,8 @@ static int get_root_max_depth(const cJSON * const item)
   cJSON_free(depths);
   return max_depth;
 }
+
+CJSON_PUBLIC(int) cJSON_GetRootMaxDepth(const cJSON * const item)
+{
+  return get_root_max_depth(item);
+}
