@@ -3461,3 +3461,42 @@ CJSON_PUBLIC(void) cJSON_free(void *object)
     global_hooks.deallocate(object);
     object = NULL;
 }
+//以下是我的添加内容
+static int count_by_type(const cJSON * const item,int target_type,cJSON_bool isFirstTime,int current_depth)
+{
+  if (item == NULL)
+    return -1;
+  if (isFirstTime)
+  {
+    switch (target_type)
+      {
+        case cJSON_Invalid:
+        case cJSON_False:
+        case cJSON_True:   
+        case cJSON_NULL:   
+        case cJSON_Number: 
+        case cJSON_String: 
+        case cJSON_Array:  
+        case cJSON_Object: 
+        case cJSON_Raw:
+          break;
+        default:
+          return -2;
+      }
+    current_depth = 0;
+  }
+  if (current_depth >= CJSON_NESTING_LIMIT)
+    return -3;
+  cJSON *child = item->child;
+  int count = 0,child_number = 0;
+  if ((item->type & 0xFF) == target_type)
+    count++;
+  while (child != NULL)
+    {
+      child_number = count_by_type(child,target_type,false,current_depth+1);
+      if (child_number >= 0)
+        count += child_number;
+      child = child->next;
+    }
+  return count;
+}
