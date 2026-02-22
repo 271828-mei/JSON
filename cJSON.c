@@ -3462,6 +3462,7 @@ CJSON_PUBLIC(void) cJSON_free(void *object)
     object = NULL;
 }
 //以下是我的添加内容
+//统计指定的类型的节点数量并封装函数
 static int count_by_type(const cJSON * const item,int target_type,cJSON_bool isFirstTime,int current_depth)
 {
   if (item == NULL)
@@ -3499,4 +3500,44 @@ static int count_by_type(const cJSON * const item,int target_type,cJSON_bool isF
       child = child->next;
     }
   return count;
+}
+
+CJSON_PUBLIC(int) cJSON_CountByType(const cJSON * const item,int target_type,cJSON_bool isFirstTime,int current_depth)
+{
+  return count_by_type(item,target_type,isFirstTime,current_depth);
+}
+
+static int get_root_max_depth(const cJSON * const item)
+{
+  int depth = 1,child_depth = 0,max_depth = 1;
+  int count = 0,i = 0;
+  int *depths = (int *)cJSON_malloc(1000 * sizeof(int));
+  if (depths == NULL)
+    return -1;
+  int current_depth = depth; 
+  if (item == NULL)
+  {
+    cJSON_free(depths);
+    return -2;
+  }
+  cJSON *child = item->child;
+  while (child != NULL)
+    {
+      depth++;
+      current_depth = depth;
+      child_depth = get_root_max_depth(child) - 1;
+      if (child_depth >= 0)
+        depth += child_depth;
+      depths[count] = depth;
+      child = child->next;
+      count++;
+      depth = current_depth-1;
+    }
+  for(; i < count ; i++)
+    {
+      if (depths[i] > max_depth)
+        max_depth = depths[i];
+    }
+  cJSON_free(depths);
+  return max_depth;
 }
