@@ -3546,3 +3546,116 @@ CJSON_PUBLIC(int) cJSON_GetRootMaxDepth(const cJSON * const item)
 {
   return get_root_max_depth(item);
 }
+
+static cJSON_bool match_key(const char *key1,const char *key2,cJSON_bool case_sensitive)
+{
+    if (key1 == NULL || key2 == NULL)
+    {
+        return false;
+    }
+    if (case_sensitive)
+    {
+        return (strcmp(key1, key2) == 0);
+    }
+    return (case_insensitive_strcmp((unsigned char*)key1, (unsigned char*)key2) == 0);
+}
+
+static int get_object_count(const cJSON * const item,char * const name, const cJSON_bool case_sensitive)
+{
+  if (item == NULL || name == NULL)
+    return -1;
+  int result = 0,child_result = 0;
+  cJSON *child = NULL;
+  switch (item->type)
+  {
+    case cJSON_Object:
+      child = item->child;
+      while (child != NULL)
+      {
+        if (match_key(child->string,name,case_sensitive))
+          result++;
+        child_result = get_object_count(child,name,case_sensitive);
+        if (child_result >= 0)
+          result += child_result;
+        child = child->next;
+      }
+      break;
+    case cJSON_Array:
+      child = item->child;
+      while (child != NULL)
+      {
+        child_result = get_object_count(child,name,case_sensitive);
+        if (child_result >= 0)
+          result += child_result;
+        child = child->next;
+      }
+      break;
+    default:
+       return 0;
+  }
+  return result;
+}
+
+static int collect_matched_items(const cJSON *item,const char *name,cJSON_bool case_sensitive,cJSON **result,int index)
+{
+    if (item == NULL || name == NULL || result == NULL)
+    {
+        return index;
+    }
+    const cJSON *child = NULL;
+    switch (item->type)
+    {
+        case cJSON_Object:
+            child = item->child;
+            while (child != NULL)
+            {
+                if (child->string != NULL)
+                {
+                    if (match_key(child->string,name,case_sensitive))
+                    {
+                        result[index++] = (cJSON*)child;
+                    }
+                }
+                index = collect_matched_items(child,name,case_sensitive,result, index);
+                child = child->next;
+            }
+            break;
+        case cJSON_Array:
+            child = item->child;
+            while (child != NULL)
+            {
+                index = collect_matched_items(child,name,case_sensitive,result, index);
+                child = child->next;
+            }
+            break;
+        default:
+            break;
+    }
+    return index;
+}
+
+static cJSON **find_object_items(const cJSON * const item,const char * const name,const cJSON_bool case_sensitive)
+{
+    if (item == NULL || name == NULL)
+    {
+        return NULL;
+    }
+    int count = get_object_count(item,name,case_sensitive);
+    if (count <= 0)
+    {
+        return NULL;
+    }
+    cJSON **result_items = (cJSON**)cJSON_malloc((count + 1) * sizeof(cJSON*));
+    if (result_items == NULL)
+    {
+        return NULL;
+    }
+    memset(result_items,0,(count + 1) * sizeof(cJSON*));
+    int collected = collect_matched_items(item,name,case_sensitive,result_items,0);
+    if (collected != count)
+    {
+        cJSON_free(result_items);
+        return NULL;
+    }
+    return result_items;
+}
